@@ -61,9 +61,19 @@ export default function RegisterTenantPage() {
         setError('')
 
         try {
-            // Step 1: Try sign up — if already registered, sign in instead
+            // Step 1: Sign up and pass tenant data in metadata for the Database Trigger
             let session = null
-            const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ email, password })
+            let isNewRegistration = false
+            const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ 
+                email, 
+                password,
+                options: {
+                    data: {
+                        tenant_name: storeName,
+                        tenant_slug: slug
+                    }
+                }
+            })
 
             if (signUpError) {
                 if (signUpError.message.toLowerCase().includes('already registered') ||
@@ -77,20 +87,22 @@ export default function RegisterTenantPage() {
                 }
             } else {
                 session = signUpData.session
+                isNewRegistration = true
             }
 
             // Step 2: If no session (email confirmation required), go to step 3
-            if (!session) {
+            if (isNewRegistration && !session) {
                 setStep(3)
                 setLoading(false)
                 return
             }
 
-            // Step 3: Create the tenant via RPC
-            const { data: tenantId, error: tenantError } = await supabase
-                .rpc('register_new_tenant', { p_name: storeName, p_slug: slug })
-
-            if (tenantError) throw tenantError
+            // Step 3: If user already existed, create the tenant manually (since trigger only fires on NEW user creation)
+            if (!isNewRegistration) {
+                const { error: tenantError } = await supabase
+                    .rpc('register_new_tenant', { p_name: storeName, p_slug: slug })
+                if (tenantError && !tenantError.message.includes('sudah digunakan')) throw tenantError
+            }
 
             // Step 4: Redirect to their new store dashboard
             navigate(`/${slug}/admin`)
