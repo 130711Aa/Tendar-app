@@ -1,19 +1,22 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
+import { useTenantContext } from '../../context/TenantContext'
 
 export default function MovementLog() {
+    const { tenantId } = useTenantContext()
     const [movements, setMovements] = useState([])
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
-        fetchMovements()
-    }, [])
+        if (tenantId) fetchMovements()
+    }, [tenantId])
 
     const fetchMovements = async () => {
         setLoading(true)
         const { data, error } = await supabase
             .from('raw_material_movements')
             .select('*, raw_materials(name, unit)')
+            .eq('tenant_id', tenantId)
             .order('created_at', { ascending: false })
             .limit(50) // Limit to last 50 for now
 

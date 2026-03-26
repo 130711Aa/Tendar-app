@@ -4,8 +4,6 @@ import { useTenantContext } from './TenantContext'
 
 const CategoriesContext = createContext()
 
-const DEFAULT_CATEGORIES = ['Jus Segar', 'Smoothies', 'Mocktails']
-
 export function CategoriesProvider({ children }) {
     const { tenantId } = useTenantContext()
     const [categories, setCategories] = useState([])
@@ -24,17 +22,12 @@ export function CategoriesProvider({ children }) {
             if (data && data.length > 0) {
                 setCategories(data.map(c => c.name))
             } else {
-                if (import.meta.env.DEV) console.log('Seeding default categories...')
-                const { error: insertError } = await supabase
-                    .from('categories')
-                    .insert(DEFAULT_CATEGORIES.map(name => ({ name, tenant_id: tenantId })))
-                setCategories(DEFAULT_CATEGORIES)
-                if (insertError) console.error('Error seeding defaults:', insertError)
+                setCategories([]) // Tidak ada lagi default seeding, toko baru mulai dari nol
             }
         } catch (err) {
             console.error('Error fetching categories:', err)
             const stored = localStorage.getItem('kareeem_categories')
-            setCategories(stored ? JSON.parse(stored) : DEFAULT_CATEGORIES)
+            setCategories(stored ? JSON.parse(stored) : [])
         } finally {
             setLoading(false)
         }

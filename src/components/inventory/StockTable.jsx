@@ -1,15 +1,17 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import AddMaterialForm from './AddMaterialForm'
+import { useTenantContext } from '../../context/TenantContext'
 
 export default function StockTable() {
+    const { tenantId } = useTenantContext()
     const [materials, setMaterials] = useState([])
     const [loading, setLoading] = useState(true)
     const [showAddModal, setShowAddModal] = useState(false)
 
     useEffect(() => {
-        fetchStock()
-    }, [])
+        if (tenantId) fetchStock()
+    }, [tenantId])
 
     const fetchStock = async () => {
         setLoading(true)
@@ -17,6 +19,7 @@ export default function StockTable() {
             const { data, error } = await supabase
                 .from('view_raw_material_stock')
                 .select('*')
+                .eq('tenant_id', tenantId)
                 .order('is_low_stock', { ascending: false }) // Low stock first
                 .order('name', { ascending: true })
 

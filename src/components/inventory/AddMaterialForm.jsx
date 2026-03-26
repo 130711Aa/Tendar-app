@@ -1,15 +1,17 @@
 import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import toast from 'react-hot-toast'
+import { useTenantContext } from '../../context/TenantContext'
 
 export default function AddMaterialForm({ onSuccess, onCancel }) {
     const [name, setName] = useState('')
     const [minStock, setMinStock] = useState('')
     const [loading, setLoading] = useState(false)
+    const { tenantId } = useTenantContext()
 
     const handleSubmit = async (e) => {
         e.preventDefault()
-        if (!name || !minStock) return
+        if (!name || !minStock || !tenantId) return
 
         setLoading(true)
         try {
@@ -18,7 +20,8 @@ export default function AddMaterialForm({ onSuccess, onCancel }) {
                 .insert({
                     name: name,
                     unit: 'pcs', // Fixed as per user request
-                    minimum_stock: parseInt(minStock)
+                    minimum_stock: parseInt(minStock),
+                    tenant_id: tenantId
                 })
 
             if (error) throw error

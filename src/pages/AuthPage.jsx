@@ -31,6 +31,36 @@ export default function AuthPage() {
         }
     }, [])
 
+    const { tenantName, tenantId } = useTenantContext()
+
+    // Helper: check if user is admin of the current tenant (by slug, not tenantId)
+    // This is robust — doesn't depend on TenantContext async resolution
+    const checkIsAdminBySlug = async (userId) => {
+        const { data, error } = await supabase
+            .from('user_roles')
+            .select('role, tenants!inner(slug)')
+            .eq('user_id', userId)
+            .eq('role', 'admin')
+            .eq('tenants.slug', slug)
+            .maybeSingle()
+        if (error) {
+            console.error('Role check error:', error)
+            // Fallback: try with tenantId from context if available
+            if (tenantId) {
+                const { data: fallback } = await supabase
+                    .from('user_roles')
+                    .select('role')
+                    .eq('user_id', userId)
+                    .eq('tenant_id', tenantId)
+                    .eq('role', 'admin')
+                    .maybeSingle()
+                return !!fallback
+            }
+            return false
+        }
+        return !!data
+    }
+
     const handleSubmit = async (e) => {
         e.preventDefault()
 
@@ -68,19 +98,9 @@ export default function AuthPage() {
         if (result.success) {
             if (result.data?.session) {
                 toast.success(mode === 'update-password' ? 'Password berhasil diperbarui!' : 'Berhasil masuk!')
-                // Check user role — admins go to /:slug/admin, customers go to /:slug
-                const { data: roleData } = await supabase
-                    .from('user_roles')
-                    .select('role')
-                    .eq('user_id', result.data.session.user.id)
-                    .eq('tenant_id', tenantId)
-                    .limit(1)
-                    .single()
-                if (roleData?.role === 'admin') {
-                    navigate(`/${slug}/admin`)
-                } else {
-                    navigate(`/${slug}`)
-                }
+                const userId = result.data.session.user.id
+                const isAdmin = await checkIsAdminBySlug(userId)
+                navigate(isAdmin ? `/${slug}/admin` : `/${slug}`)
             } else {
                 let successMsg = ''
                 if (mode === 'login') successMsg = 'Berhasil masuk!'
@@ -92,19 +112,11 @@ export default function AuthPage() {
 
                 if (mode === 'login' || mode === 'update-password') {
                     if (mode === 'update-password') setIsRecovering(false)
-                    // Try to detect role even without auto-confirmed session
                     const { data: { session } } = await supabase.auth.getSession()
                     const userId = session?.user?.id
                     if (userId) {
-                        const { data: roleData } = await supabase
-                            .from('user_roles')
-                            .select('role')
-                            .eq('user_id', userId)
-                            .eq('tenant_id', tenantId)
-                            .limit(1)
-                            .single()
-                        if (roleData?.role === 'admin') navigate(`/${slug}/admin`)
-                        else navigate(`/${slug}`)
+                        const isAdmin = await checkIsAdminBySlug(userId)
+                        navigate(isAdmin ? `/${slug}/admin` : `/${slug}`)
                     } else {
                         navigate(`/${slug}`)
                     }
@@ -116,8 +128,6 @@ export default function AuthPage() {
             toast.error(result.error || 'Terjadi kesalahan')
         }
     }
-
-    const { tenantName, tenantId } = useTenantContext()
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#fcfaf8] to-[#fff3e6] px-4 py-10">

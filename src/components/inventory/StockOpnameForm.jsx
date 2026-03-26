@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import toast from 'react-hot-toast'
+import { useTenantContext } from '../../context/TenantContext'
 
 export default function StockOpnameForm({ onSuccess }) {
+    const { tenantId } = useTenantContext()
     const [materials, setMaterials] = useState([])
     const [selectedMaterialId, setSelectedMaterialId] = useState('')
     const [currentSystemStock, setCurrentSystemStock] = useState(0)
@@ -11,8 +13,8 @@ export default function StockOpnameForm({ onSuccess }) {
     const [submitting, setSubmitting] = useState(false)
 
     useEffect(() => {
-        fetchMaterials()
-    }, [])
+        if (tenantId) fetchMaterials()
+    }, [tenantId])
 
     const fetchMaterials = async () => {
         setLoading(true)
@@ -20,6 +22,7 @@ export default function StockOpnameForm({ onSuccess }) {
             const { data, error } = await supabase
                 .from('view_raw_material_stock')
                 .select('*')
+                .eq('tenant_id', tenantId)
                 .order('name')
 
             if (error) throw error
@@ -46,7 +49,7 @@ export default function StockOpnameForm({ onSuccess }) {
 
     const handleSubmit = async (e) => {
         e.preventDefault()
-        if (!selectedMaterialId || addQuantity === '' || parseInt(addQuantity) <= 0) {
+        if (!selectedMaterialId || addQuantity === '' || parseInt(addQuantity) <= 0 || !tenantId) {
             toast.error('Jumlah harus lebih dari 0')
             return
         }
@@ -63,7 +66,8 @@ export default function StockOpnameForm({ onSuccess }) {
                     movement_type: 'IN',
                     quantity: qty,
                     reference_type: 'PURCHASE',
-                    notes: `Input Bahan Baku: +${qty} (Stok sebelumnya: ${currentSystemStock})`
+                    notes: `Input Bahan Baku: +${qty} (Stok sebelumnya: ${currentSystemStock})`,
+                    tenant_id: tenantId
                 })
 
             if (error) throw error

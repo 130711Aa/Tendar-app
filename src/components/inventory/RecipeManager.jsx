@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import toast from 'react-hot-toast'
 import { useProducts } from '../../context/ProductsContext'
+import { useTenantContext } from '../../context/TenantContext'
 
 export default function RecipeManager() {
     const { products } = useProducts()
+    const { tenantId } = useTenantContext()
     const [materials, setMaterials] = useState([])
     const [selectedProductId, setSelectedProductId] = useState('')
     const [recipes, setRecipes] = useState([]) // Existing recipes for selected product
@@ -16,19 +18,23 @@ export default function RecipeManager() {
     const [adding, setAdding] = useState(false)
 
     useEffect(() => {
-        fetchMaterials()
-    }, [])
+        if (tenantId) fetchMaterials()
+    }, [tenantId])
 
     useEffect(() => {
-        if (selectedProductId) {
+        if (selectedProductId && tenantId) {
             fetchRecipes(selectedProductId)
         } else {
             setRecipes([])
         }
-    }, [selectedProductId])
+    }, [selectedProductId, tenantId])
 
     const fetchMaterials = async () => {
-        const { data } = await supabase.from('raw_materials').select('*').order('name')
+        const { data } = await supabase
+            .from('raw_materials')
+            .select('*')
+            .eq('tenant_id', tenantId)
+            .order('name')
         setMaterials(data || [])
     }
 
@@ -38,6 +44,7 @@ export default function RecipeManager() {
             .from('product_raw_materials')
             .select('*, raw_materials(name, unit)')
             .eq('product_id', productId)
+            .eq('tenant_id', tenantId)
 
         if (!error) setRecipes(data || [])
         setLoading(false)
@@ -45,14 +52,15 @@ export default function RecipeManager() {
 
     const handleAddIngredient = async (e) => {
         e.preventDefault()
-        if (!selectedProductId || !formMaterialId || !formQuantity) return
+        if (!selectedProductId || !formMaterialId || !formQuantity || !tenantId) return
 
         setAdding(true)
         try {
             const { error } = await supabase.from('product_raw_materials').insert({
                 product_id: parseInt(selectedProductId),
                 raw_material_id: parseInt(formMaterialId),
-                quantity_used: parseInt(formQuantity)
+                quantity_used: parseInt(formQuantity),
+                tenant_id: tenantId
             })
 
             if (error) throw error
