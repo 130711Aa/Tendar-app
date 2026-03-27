@@ -8,7 +8,7 @@ import { useTenantContext } from '../context/TenantContext'
 import { formatRupiah } from '../lib/utils'
 
 export default function AdminDashboard() {
-    const { slug } = useTenantContext()
+    const { slug, tenantName } = useTenantContext()
     const { orders } = useOrders()
     const { categories } = useCategories()
     const { products } = useProducts()

@@ -88,22 +88,33 @@ export function ProductsProvider({ children }) {
     }, [products, fetchProducts])
 
     const addProduct = useCallback(async (product) => {
-        const newProduct = {
-            ...product,
-            id: Date.now(),
+        if (!tenantId) {
+            console.error('Cannot add product: tenantId is missing')
+            return null
+        }
+        const payload = {
+            name: product.name,
+            description: product.description || '',
+            price: product.price,
+            category: product.category,
+            image_url: product.image_url || '',
             stock_status: product.stock_status !== undefined ? product.stock_status : true,
             tenant_id: tenantId,
         }
-        setProducts(prev => [...prev, newProduct])
         try {
-            const { error } = await supabase.from('products').insert([newProduct])
+            const { data, error } = await supabase
+                .from('products')
+                .insert([payload])
+                .select()
+                .single()
             if (error) throw error
+            setProducts(prev => [...prev, data])
+            return data
         } catch (err) {
             console.error('Error adding product:', err)
-            fetchProducts()
+            return null
         }
-        return newProduct
-    }, [fetchProducts, tenantId])
+    }, [tenantId])
 
     const deleteProduct = useCallback(async (productId) => {
         // Optimistic update
@@ -114,13 +125,14 @@ export function ProductsProvider({ children }) {
                 .from('products')
                 .delete()
                 .eq('id', productId)
+                .eq('tenant_id', tenantId)
 
             if (error) throw error
         } catch (err) {
             console.error('Error deleting product:', err)
             fetchProducts()
         }
-    }, [fetchProducts])
+    }, [fetchProducts, tenantId])
 
     const updateProduct = useCallback(async (productId, updates) => {
         // Optimistic update
@@ -133,13 +145,14 @@ export function ProductsProvider({ children }) {
                 .from('products')
                 .update(updates)
                 .eq('id', productId)
+                .eq('tenant_id', tenantId)
 
             if (error) throw error
         } catch (err) {
             console.error('Error updating product:', err)
             fetchProducts()
         }
-    }, [fetchProducts])
+    }, [fetchProducts, tenantId])
 
     // Available products (for customer-facing pages)
     const availableProducts = products.filter(p => p.stock_status)

@@ -6,7 +6,7 @@ function SlugPreview({ slug }) {
     return (
         <div className="mt-1 flex items-center gap-1 text-xs text-slate-400">
             <span className="material-symbols-outlined text-xs">link</span>
-            tendar.netlify.app/<strong className="text-orange-500">{slug || 'nama-tokomu'}</strong>
+            tendar-app.netlify.app/<strong className="text-orange-500">{slug || 'nama-tokomu'}</strong>
         </div>
     )
 }
@@ -90,28 +90,36 @@ export default function RegisterTenantPage() {
                 isNewRegistration = true
             }
 
-            // Step 2: If no session (email confirmation required), go to step 3
+            // Step 2: If no session (email confirmation required), show step 3
             if (isNewRegistration && !session) {
                 setStep(3)
                 setLoading(false)
                 return
             }
 
-            // Step 3: If user already existed, create the tenant manually (since trigger only fires on NEW user creation)
+            // Step 3: If user already existed, create the tenant manually
             if (!isNewRegistration) {
                 const { error: tenantError } = await supabase
                     .rpc('register_new_tenant', { p_name: storeName, p_slug: slug })
                 if (tenantError && !tenantError.message.includes('sudah digunakan')) throw tenantError
             }
 
-            // Step 4: Redirect to their new store dashboard
-            navigate(`/${slug}/admin`)
+            // Step 4: Wait briefly for DB trigger to finish creating tenant, then navigate
+            await new Promise(resolve => setTimeout(resolve, 1500))
+            // If we still have a session, go directly to admin panel
+            const { data: { session: currentSession } } = await supabase.auth.getSession()
+            if (currentSession) {
+                navigate(`/${slug}/admin`)
+            } else {
+                navigate(`/${slug}/auth`)
+            }
         } catch (err) {
             setError(err.message || 'Terjadi kesalahan. Coba lagi.')
         } finally {
             setLoading(false)
         }
     }
+
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 flex items-center justify-center p-4 font-[Manrope,sans-serif]">
@@ -134,7 +142,7 @@ export default function RegisterTenantPage() {
                                 Setelah konfirmasi, login dan tokomu akan aktif di:
                             </p>
                             <div className="mt-4 bg-orange-50 border border-orange-200 rounded-xl px-4 py-3">
-                                <p className="font-bold text-orange-600">tendar.netlify.app/{slug}</p>
+                                <p className="font-bold text-orange-600">tendar-app.netlify.app/{slug}</p>
                             </div>
                             <button
                                 onClick={() => navigate(`/${slug}/auth`)}
@@ -226,7 +234,7 @@ export default function RegisterTenantPage() {
                 </div>
 
                 <div className="text-center mt-5 text-slate-400 text-xs space-y-1">
-                    <p>Sudah punya toko? Login di: <strong>tendar.netlify.app/<span className="text-orange-500">slug-tokomu</span>/auth</strong></p>
+                    <p>Sudah punya toko? Login di: <strong>tendar-app.netlify.app/<span className="text-orange-500">slug-tokomu</span>/auth</strong></p>
                     <p>Contoh: <a href="/kareem-juice/auth" className="text-orange-500 hover:underline">kareem-juice/auth</a></p>
                 </div>
             </div>
