@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { toast } from 'react-hot-toast'
 import { useTenantContext } from '../context/TenantContext'
+import { BrandIcon } from '../components/BrandLogo'
 
 export default function AuthPage() {
     const [mode, setMode] = useState('login') // 'login', 'register', 'update-password', or 'forgot-password'
@@ -34,13 +35,11 @@ export default function AuthPage() {
     const { tenantName, tenantId } = useTenantContext()
 
     // Helper: check if user is admin of the current tenant (by slug, not tenantId)
-    // This is robust — doesn't depend on TenantContext async resolution
-    const checkIsAdminBySlug = async (userId) => {
+    const checkUserRoleBySlug = async (userId) => {
         const { data, error } = await supabase
             .from('user_roles')
             .select('role, tenants!inner(slug)')
             .eq('user_id', userId)
-            .eq('role', 'admin')
             .eq('tenants.slug', slug)
             .maybeSingle()
         if (error) {
@@ -52,13 +51,12 @@ export default function AuthPage() {
                     .select('role')
                     .eq('user_id', userId)
                     .eq('tenant_id', tenantId)
-                    .eq('role', 'admin')
                     .maybeSingle()
-                return !!fallback
+                return fallback?.role || 'customer'
             }
-            return false
+            return 'customer'
         }
-        return !!data
+        return data?.role || 'customer'
     }
 
     const handleSubmit = async (e) => {
@@ -99,8 +97,10 @@ export default function AuthPage() {
             if (result.data?.session) {
                 toast.success(mode === 'update-password' ? 'Password berhasil diperbarui!' : 'Berhasil masuk!')
                 const userId = result.data.session.user.id
-                const isAdmin = await checkIsAdminBySlug(userId)
-                navigate(isAdmin ? `/${slug}/admin` : `/${slug}`)
+                const role = await checkUserRoleBySlug(userId)
+                if (role === 'admin') navigate(`/${slug}/admin`)
+                else if (role === 'staff') navigate(`/${slug}/pos`)
+                else navigate(`/${slug}`)
             } else {
                 let successMsg = ''
                 if (mode === 'login') successMsg = 'Berhasil masuk!'
@@ -115,8 +115,10 @@ export default function AuthPage() {
                     const { data: { session } } = await supabase.auth.getSession()
                     const userId = session?.user?.id
                     if (userId) {
-                        const isAdmin = await checkIsAdminBySlug(userId)
-                        navigate(isAdmin ? `/${slug}/admin` : `/${slug}`)
+                        const role = await checkUserRoleBySlug(userId)
+                        if (role === 'admin') navigate(`/${slug}/admin`)
+                        else if (role === 'staff') navigate(`/${slug}/pos`)
+                        else navigate(`/${slug}`)
                     } else {
                         navigate(`/${slug}`)
                     }
@@ -134,8 +136,8 @@ export default function AuthPage() {
             <div className="w-full max-w-md">
                 {/* Logo */}
                 <div className="text-center mb-6">
-                    <button onClick={() => navigate(`/${slug}`)} className="inline-flex size-14 bg-[#ff8c00] rounded-2xl items-center justify-center text-white shadow-xl shadow-[#ff8c00]/25 mb-4 hover:scale-105 transition-transform">
-                        <span className="material-symbols-outlined text-3xl">local_drink</span>
+                    <button onClick={() => navigate(`/${slug}`)} className="inline-flex size-14 rounded-2xl items-center justify-center text-white shadow-xl shadow-[#ff8c00]/25 mb-4 hover:scale-105 transition-transform">
+                        <BrandIcon className="w-8 h-8" />
                     </button>
                     <h1 className="text-2xl font-black tracking-tight text-[#181510]">{tenantName || 'Login Toko'}</h1>
                     <p className="text-sm text-neutral-500 mt-1">

@@ -45,20 +45,20 @@ export function CategoriesProvider({ children }) {
             return { success: false, error: 'Kategori sudah ada' }
         }
 
-        setCategories(prev => [...prev, trimmed])
-
         try {
             const { error } = await supabase
                 .from('categories')
                 .insert([{ name: trimmed, tenant_id: tenantId }])
             if (error) throw error
+            
+            setCategories(prev => [...prev, trimmed])
             return { success: true }
         } catch (err) {
             console.error('Error adding category:', err)
             fetchCategories()
             return { success: false, error: 'Gagal menyimpan kategori ke server' }
         }
-    }, [categories, fetchCategories])
+    }, [categories, fetchCategories, tenantId])
 
     const deleteCategory = useCallback(async (name) => {
         setCategories(prev => prev.filter(c => c !== name))

@@ -4,13 +4,29 @@ import StockTable from '../components/inventory/StockTable'
 import StockOpnameForm from '../components/inventory/StockOpnameForm'
 import RecipeManager from '../components/inventory/RecipeManager'
 import MovementLog from '../components/inventory/MovementLog'
+import { useTenantContext } from '../context/TenantContext'
+import { Link } from 'react-router-dom'
 
 export default function InventoryPage() {
+    const { slug, planLimits } = useTenantContext()
     const [activeTab, setActiveTab] = useState('stock') // stock, opname, recipes, movements
     const [refreshTrigger, setRefreshTrigger] = useState(0)
 
     const handleRefresh = () => {
         setRefreshTrigger(prev => prev + 1)
+    }
+
+    if (planLimits && !planLimits.inventoryEnabled) {
+        return (
+            <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
+                <span className="material-symbols-outlined text-6xl text-slate-300 mb-4">inventory_2</span>
+                <h1 className="text-2xl font-bold text-slate-800 mb-2">Manajemen Stok Terkunci</h1>
+                <p className="text-slate-500 mb-6 max-w-sm">Paket Anda saat ini tidak memiliki akses ke Manajemen Inventaris. Silakan upgrade paket untuk mengelola stok bahan baku.</p>
+                <Link to={`/${slug}/admin/billing`} className="bg-[#ff8c00] text-white px-6 py-3 rounded-xl font-bold hover:bg-[#e07800] transition-colors shadow-lg">
+                    Lihat Paket Langganan
+                </Link>
+            </div>
+        )
     }
 
     return (
@@ -26,7 +42,7 @@ export default function InventoryPage() {
                     {[
                         { id: 'stock', label: 'Stok Saat Ini', icon: 'inventory_2' },
                         { id: 'opname', label: 'Input Bahan', icon: 'add_circle' },
-                        { id: 'recipes', label: 'Resep Produk', icon: 'menu_book' },
+                        ...(planLimits?.bomEnabled ? [{ id: 'recipes', label: 'Resep Produk', icon: 'menu_book' }] : []),
                         { id: 'movements', label: 'Riwayat', icon: 'history' },
                     ].map(tab => (
                         <button

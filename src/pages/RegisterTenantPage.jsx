@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { BrandLogo } from '../components/BrandLogo'
 
 function SlugPreview({ slug }) {
     return (
@@ -125,8 +126,10 @@ export default function RegisterTenantPage() {
         <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 flex items-center justify-center p-4 font-[Manrope,sans-serif]">
             <div className="w-full max-w-md">
                 {/* Branding */}
-                <div className="text-center mb-8">
-                    <a href="/" className="text-2xl font-extrabold text-[#ff8c00] tracking-tight">Tendar</a>
+                <div className="text-center mb-8 flex flex-col items-center">
+                    <a href="/" className="inline-block mb-1">
+                        <BrandLogo className="flex flex-col items-center gap-1" iconSize="w-12 h-12" textSize="text-3xl" />
+                    </a>
                     <p className="mt-2 text-slate-500 text-sm">Buat toko digital kamu dalam 2 menit</p>
                 </div>
 

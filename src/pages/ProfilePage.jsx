@@ -4,11 +4,13 @@ import { useAuth } from '../context/AuthContext'
 import { useTenantContext } from '../context/TenantContext'
 import { supabase } from '../lib/supabase'
 import toast from 'react-hot-toast'
+import VerificationCriteriaModal from '../components/VerificationCriteriaModal'
 
 export default function ProfilePage() {
     const { user, isAuthenticated, logout } = useAuth()
     const { slug } = useTenantContext()
     const [resetLoading, setResetLoading] = useState(false)
+    const [isCriteriaOpen, setIsCriteriaOpen] = useState(false)
 
     if (!isAuthenticated) {
         return <Navigate to={`/${slug}/auth`} replace />
@@ -56,6 +58,14 @@ export default function ProfilePage() {
                         {metadata.name || 'Pengguna'}
                     </h2>
                     <p className="text-sm text-neutral-500">{user.email}</p>
+                    
+                    <button 
+                        onClick={() => setIsCriteriaOpen(true)}
+                        className="mt-4 flex items-center gap-2 bg-blue-50 text-blue-600 px-4 py-2 rounded-full text-xs font-bold hover:bg-blue-100 transition-colors"
+                    >
+                        <span className="material-symbols-outlined text-[16px]">verified</span>
+                        Cek Kriteria Website
+                    </button>
                 </div>
 
                 {/* Info Cards */}
@@ -88,7 +98,10 @@ export default function ProfilePage() {
                                 <span className="material-symbols-outlined text-green-500">phone</span>
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className="text-xs text-neutral-400 font-medium">Telepon</p>
+                                <p className="text-xs text-neutral-400 font-medium flex items-center gap-1">
+                                    Telepon 
+                                    <span className="material-symbols-outlined text-[12px] text-orange-400 cursor-help" title="Syarat wajib untuk verifikasi Payment Gateway">info</span>
+                                </p>
                                 <p className="text-sm font-semibold text-neutral-800">{metadata.phone}</p>
                             </div>
                         </div>
@@ -127,6 +140,11 @@ export default function ProfilePage() {
                     </button>
                 </div>
             </div>
+
+            <VerificationCriteriaModal 
+                isOpen={isCriteriaOpen} 
+                onClose={() => setIsCriteriaOpen(false)} 
+            />
         </div>
     )
 }

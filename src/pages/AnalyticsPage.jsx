@@ -7,8 +7,11 @@ import SalesTrendChart from '../components/analytics/SalesTrendChart'
 import CustomerTable from '../components/analytics/CustomerTable'
 import { Download, Printer, Trash2, AlertTriangle } from 'lucide-react'
 import * as XLSX from 'xlsx'
+import { useTenantContext } from '../context/TenantContext'
+import { Link } from 'react-router-dom'
 
 export default function AnalyticsPage() {
+    const { tenantId, slug, planLimits } = useTenantContext()
     const [loading, setLoading] = useState(true)
     const [summary, setSummary] = useState({ total_revenue: 0, total_orders: 0, overall_aov: 0 })
     const [products, setProducts] = useState([])
@@ -22,8 +25,8 @@ export default function AnalyticsPage() {
     const [resetting, setResetting] = useState(false)
 
     useEffect(() => {
-        fetchAnalytics()
-    }, [])
+        if (tenantId) fetchAnalytics()
+    }, [tenantId])
 
     const fetchAnalytics = async () => {
         setLoading(true)
@@ -37,12 +40,12 @@ export default function AnalyticsPage() {
                 { data: customersData },
                 { data: forecastData }
             ] = await Promise.all([
-                supabase.from('view_analytics_summary').select('*').single(),
-                supabase.from('view_analytics_product_performance').select('*'),
-                supabase.from('view_analytics_product_matrix').select('*'),
-                supabase.from('view_analytics_sales_time').select('*').order('day_of_week', { ascending: true }),
-                supabase.from('view_analytics_customer_insights').select('*'),
-                supabase.from('view_analytics_forecast').select('*').single()
+                supabase.from('view_analytics_summary').select('*').eq('tenant_id', tenantId).single(),
+                supabase.from('view_analytics_product_performance').select('*').eq('tenant_id', tenantId),
+                supabase.from('view_analytics_product_matrix').select('*').eq('tenant_id', tenantId),
+                supabase.from('view_analytics_sales_time').select('*').eq('tenant_id', tenantId).order('day_of_week', { ascending: true }),
+                supabase.from('view_analytics_customer_insights').select('*').eq('tenant_id', tenantId),
+                supabase.from('view_analytics_forecast').select('*').eq('tenant_id', tenantId).single()
             ])
 
             if (summaryData) setSummary(summaryData)
@@ -63,11 +66,17 @@ export default function AnalyticsPage() {
     }
 
     const handleExportAndReset = async () => {
+        if (!planLimits.exportCsv && !planLimits.exportExcel) {
+            alert('Fitur Export terkunci. Silakan upgrade paket Anda ke Business atau Pro.')
+            return
+        }
+
         try {
             // 1. Fetch ALL Raw Data
             const { data: rawOrders, error } = await supabase
                 .from('orders')
                 .select('*, order_items(*)')
+                .eq('tenant_id', tenantId)
                 .order('created_at', { ascending: false })
 
             if (error) throw error
@@ -167,6 +176,19 @@ export default function AnalyticsPage() {
 
     const handlePrint = () => {
         window.print()
+    }
+
+    if (planLimits && !planLimits.analyticsEnabled) {
+        return (
+            <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
+                <span className="material-symbols-outlined text-6xl text-slate-300 mb-4">monitoring</span>
+                <h1 className="text-2xl font-bold text-slate-800 mb-2">Analytics Terkunci</h1>
+                <p className="text-slate-500 mb-6 max-w-sm">Paket Anda saat ini tidak memiliki akses ke Dashboard Analytics. Silakan upgrade paket untuk melihat performa bisnis.</p>
+                <Link to={`/${slug}/admin/billing`} className="bg-[#ff8c00] text-white px-6 py-3 rounded-xl font-bold hover:bg-[#e07800] transition-colors shadow-lg">
+                    Lihat Paket Langganan
+                </Link>
+            </div>
+        )
     }
 
     if (loading) return <div className="p-8 text-center">Loading Analytics...</div>

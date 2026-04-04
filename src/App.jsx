@@ -32,6 +32,9 @@ const HistoryPage = lazy(() => import('./pages/HistoryPage'))
 const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage'))
 const InventoryPage = lazy(() => import('./pages/InventoryPage'))
 const POSPage = lazy(() => import('./pages/POSPage'))
+const BillingPage = lazy(() => import('./pages/BillingPage'))
+const StaffManagement = lazy(() => import('./pages/StaffManagement'))
+const ShareLinkPage = lazy(() => import('./pages/ShareLinkPage'))
 
 const LoadingFallback = () => (
     <div className="min-h-screen flex items-center justify-center bg-[#fcfaf8]">
@@ -84,7 +87,7 @@ function TenantAppContent() {
     }
 
     return (
-        <div className="relative flex flex-col min-h-screen bg-[#fcfaf8]">
+        <div className={`relative flex flex-col min-h-screen bg-[#fcfaf8] ${isAdmin && !isPOS ? 'lg:pl-64' : ''}`}>
             {!isAuthPage && !isPOS && <Navbar />}
             <div className="flex-1">
                 <Suspense fallback={<LoadingFallback />}>
@@ -97,16 +100,19 @@ function TenantAppContent() {
 
                         {/* Admin (all protected) */}
                         <Route path="admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
-                        <Route path="admin/orders" element={<ProtectedRoute><OrdersPage /></ProtectedRoute>} />
+                        <Route path="admin/orders" element={<ProtectedRoute allowedRoles={['admin', 'staff']}><OrdersPage /></ProtectedRoute>} />
                         <Route path="admin/menu" element={<ProtectedRoute><MenuManagement /></ProtectedRoute>} />
                         <Route path="admin/history" element={<ProtectedRoute><HistoryPage /></ProtectedRoute>} />
                         <Route path="admin/categories" element={<ProtectedRoute><CategoriesPage /></ProtectedRoute>} />
-                        <Route path="admin/inventory" element={<ProtectedRoute><InventoryPage /></ProtectedRoute>} />
+                        <Route path="admin/inventory" element={<ProtectedRoute allowedRoles={['admin', 'staff']}><InventoryPage /></ProtectedRoute>} />
                         <Route path="admin/analytics" element={<ProtectedRoute><AnalyticsPage /></ProtectedRoute>} />
+                        <Route path="admin/billing" element={<ProtectedRoute><BillingPage /></ProtectedRoute>} />
+                        <Route path="admin/staff" element={<ProtectedRoute><StaffManagement /></ProtectedRoute>} />
+                        <Route path="admin/share" element={<ProtectedRoute><ShareLinkPage /></ProtectedRoute>} />
                         <Route path="admin/login" element={<Navigate to={`/${slug}/auth`} replace />} />
 
                         {/* POS */}
-                        <Route path="pos" element={<ProtectedRoute><POSPage /></ProtectedRoute>} />
+                        <Route path="pos" element={<ProtectedRoute allowedRoles={['admin', 'staff']}><POSPage /></ProtectedRoute>} />
 
                         {/* Catch all */}
                         <Route path="*" element={<Navigate to={`/${slug}`} replace />} />

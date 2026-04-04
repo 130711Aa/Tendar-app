@@ -12,7 +12,10 @@ import { useAuth } from '../context/AuthContext'
 export function useTenantAdmin(tenantId) {
     const { user } = useAuth()
     const [isTenantAdmin, setIsTenantAdmin] = useState(false)
-    const [tenantAdminLoading, setTenantAdminLoading] = useState(true)
+    const [isTenantStaff, setIsTenantStaff] = useState(false)
+    // Start loading only if we already have both user and tenantId — otherwise
+    // the effect will immediately set loading=false anyway, causing a flicker.
+    const [tenantAdminLoading, setTenantAdminLoading] = useState(() => !!(user && tenantId))
     const prevKeyRef = useRef(null)
 
     useEffect(() => {
@@ -24,6 +27,7 @@ export function useTenantAdmin(tenantId) {
 
         if (!user || !tenantId) {
             setIsTenantAdmin(false)
+            setIsTenantStaff(false)
             setTenantAdminLoading(false)
             return
         }
@@ -35,18 +39,20 @@ export function useTenantAdmin(tenantId) {
             .select('role')
             .eq('user_id', user.id)
             .eq('tenant_id', tenantId)
-            .eq('role', 'admin')
+            .in('role', ['admin', 'staff'])
             .maybeSingle()
             .then(({ data, error }) => {
-                if (error) {
+                if (error || !data) {
                     console.error('[useTenantAdmin] Error checking role:', error)
                     setIsTenantAdmin(false)
+                    setIsTenantStaff(false)
                 } else {
-                    setIsTenantAdmin(!!data)
+                    setIsTenantAdmin(data.role === 'admin')
+                    setIsTenantStaff(data.role === 'staff')
                 }
                 setTenantAdminLoading(false)
             })
     }, [user, tenantId])
 
-    return { isTenantAdmin, tenantAdminLoading }
+    return { isTenantAdmin, isTenantStaff, tenantAdminLoading }
 }

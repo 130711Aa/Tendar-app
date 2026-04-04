@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { BrandLogo } from '../components/BrandLogo'
 
 export default function LandingPage() {
     const navigate = useNavigate()
@@ -13,9 +14,10 @@ export default function LandingPage() {
     ]
 
     const plans = [
-        { name: 'Free', price: '0', color: 'border-slate-200', badge: '', features: ['Hingga 20 produk', 'Manajemen pesanan', 'Laporan dasar'] },
-        { name: 'Basic', price: '99K', color: 'border-orange-300', badge: 'Populer', features: ['Produk tak terbatas', 'Mode Kasir (POS)', 'Analitik lengkap', 'Manajemen stok'] },
-        { name: 'Pro', price: '199K', color: 'border-amber-400', badge: 'Terbaik', features: ['Semua fitur Basic', 'Laporan ekspor Excel', 'Multi-kasir', 'Prioritas support'] },
+        { name: 'Free', price: '0', color: 'border-slate-200', badge: '', features: ['Hingga 10 produk', '1 Akses Staff', 'Online Menu'] },
+        { name: 'Starter', price: '25K', color: 'border-orange-300', badge: 'Terjangkau', features: ['Hingga 30 produk', 'Kategori & Gambar Produk', 'Online Menu'] },
+        { name: 'Business', price: '50K', color: 'border-orange-400', badge: 'Populer', features: ['Produk Tak Terbatas', 'Kasir (POS) & Analitik', 'Manajemen Stok Dasar', 'Export CSV Data'] },
+        { name: 'Pro', price: '100K', color: 'border-[#ff8c00] border-[3px]', badge: 'Terbaik', features: ['Resep & BoM', 'Staff Tak Terbatas', 'Export Laporan Excel', 'Prioritas Dukungan'] },
     ]
 
     return (
@@ -23,7 +25,7 @@ export default function LandingPage() {
 
             {/* === NAV === */}
             <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100 px-6 py-4 flex items-center justify-between">
-                <span className="text-xl font-extrabold text-[#ff8c00] tracking-tight">Tendar</span>
+                <BrandLogo />
                 <div className="flex items-center gap-3">
                     <button
                         onClick={() => navigate('/register')}
@@ -44,7 +46,7 @@ export default function LandingPage() {
                 </h1>
                 <p className="mt-5 text-slate-500 text-lg max-w-xl mx-auto leading-relaxed">
                     Tendar adalah platform all-in-one untuk bisnis F&B. Dari manajemen menu, pesanan, kasir,
-                    hingga analitik — semua dalam satu dashboard.
+                    hingga analitik semua dalam satu dashboard.
                 </p>
                 <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
                     <button
@@ -80,7 +82,7 @@ export default function LandingPage() {
             {/* === PRICING === */}
             <section className="bg-white px-6 py-20">
                 <h2 className="text-2xl font-bold text-slate-700 text-center mb-10">Harga Transparan</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-4xl mx-auto">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
                     {plans.map(p => (
                         <div key={p.name} className={`relative bg-white border-2 ${p.color} p-6 rounded-2xl`}>
                             {p.badge && (
@@ -90,14 +92,14 @@ export default function LandingPage() {
                             )}
                             <p className="font-bold text-slate-700 text-lg">{p.name}</p>
                             <p className="mt-1">
-                                <span className="text-3xl font-extrabold text-slate-800">Rp{p.price}</span>
-                                <span className="text-slate-400 text-sm">/bln</span>
+                                <span className="text-3xl font-extrabold text-[#181510] tracking-tight">Rp{p.price}</span>
+                                <span className="text-slate-400 text-sm font-medium">/bln</span>
                             </p>
                             <ul className="mt-4 space-y-2">
                                 {p.features.map(f => (
-                                    <li key={f} className="flex gap-2 text-sm text-slate-600">
-                                        <span className="material-symbols-outlined text-green-500 text-base">check_circle</span>
-                                        {f}
+                                    <li key={f} className="flex gap-2 text-sm text-slate-600 font-medium tracking-tight">
+                                        <span className="material-symbols-outlined text-emerald-500 text-[18px]">check_circle</span>
+                                        <span className="leading-tight pt-0.5">{f}</span>
                                     </li>
                                 ))}
                             </ul>
@@ -124,8 +126,37 @@ export default function LandingPage() {
                 </button>
             </section>
 
-            <footer className="text-center py-6 text-slate-400 text-sm bg-[#fcfaf8]">
-                © {new Date().getFullYear()} Tendar. Dibuat dengan ❤️ untuk UMKM Indonesia.
+            {/* === CONTACT === */}
+            <section className="bg-[#fcfaf8] px-6 py-12 border-t border-slate-100">
+                <div className="max-w-3xl mx-auto text-center">
+                    <h2 className="text-xl font-bold text-slate-700 mb-2">Hubungi Kami</h2>
+                    <p className="text-slate-500 text-sm mb-6">Ada pertanyaan atau butuh bantuan? Tim kami siap membantu kamu.</p>
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                        <a
+                            href="https://wa.me/6285771640544"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-3 bg-[#25D366] text-white px-6 py-3 rounded-full font-semibold text-sm hover:bg-[#1ebe5d] transition-all shadow-md"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                            </svg>
+                            WhatsApp: 0857-7164-0544
+                        </a>
+                    </div>
+                    <p className="mt-4 text-slate-400 text-xs">
+                        Contact Person: <strong className="text-slate-500">Tim Tendar</strong> — tersedia Senin–Sabtu, 09.00–17.00 WIB
+                    </p>
+                </div>
+            </section>
+
+            <footer className="text-center py-6 text-slate-400 text-sm bg-[#f5f3f0] border-t border-slate-100">
+                <p>© {new Date().getFullYear()} Tendar. Dibuat dengan ❤️ untuk UMKM Indonesia.</p>
+                <p className="mt-1">
+                    <a href="https://wa.me/6285771640544" target="_blank" rel="noopener noreferrer" className="text-[#ff8c00] hover:underline font-medium">
+                        Hubungi Kami via WhatsApp
+                    </a>
+                </p>
             </footer>
         </div>
     )

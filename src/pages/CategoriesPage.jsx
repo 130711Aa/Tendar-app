@@ -9,9 +9,9 @@ export default function CategoriesPage() {
     const [newCategory, setNewCategory] = useState('')
     const [confirmDelete, setConfirmDelete] = useState(null)
 
-    const handleAdd = (e) => {
+    const handleAdd = async (e) => {
         e.preventDefault()
-        const result = addCategory(newCategory)
+        const result = await addCategory(newCategory)
         if (result.success) {
             toast.success(`Kategori "${newCategory.trim()}" berhasil ditambahkan!`)
             setNewCategory('')

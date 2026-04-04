@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useTenantContext } from '../../context/TenantContext'
 import BackToAdminButton from './BackToAdminButton'
+import { BrandIcon } from '../BrandLogo'
 
 export default function POSTopBar() {
     const { user } = useAuth()
@@ -37,7 +38,7 @@ export default function POSTopBar() {
                 <div className="h-8 w-px bg-slate-200/50" />
                 <div className="flex items-center gap-3">
                     <div className="bg-[#ff8c00] p-2 rounded-xl text-white shadow-lg shadow-[#ff8c00]/20">
-                        <span className="material-symbols-outlined text-2xl">local_drink</span>
+                        <BrandIcon className="w-6 h-6" />
                     </div>
                     <div>
                         <h1 className="text-xl font-display font-bold tracking-tight text-slate-900">{tenantName || 'Toko Saya'}</h1>

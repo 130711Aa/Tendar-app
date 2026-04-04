@@ -3,9 +3,11 @@ import { useCategories } from '../context/CategoriesContext'
 import { useProducts } from '../context/ProductsContext'
 import { formatRupiah } from '../lib/utils'
 import toast from 'react-hot-toast'
+import { useTenantContext } from '../context/TenantContext'
 
 export default function MenuManagement() {
     const { products, toggleStock, deleteProduct, updateProduct, addProduct } = useProducts()
+    const { slug, planLimits } = useTenantContext()
     const [searchQuery, setSearchQuery] = useState('')
     const [selectedCategory, setSelectedCategory] = useState('Semua')
     const [sortBy, setSortBy] = useState('default')
@@ -18,6 +20,10 @@ export default function MenuManagement() {
 
     const handleAddSubmit = async (e) => {
         e.preventDefault()
+        if (products.length >= planLimits.maxProducts) {
+            toast.error(`Batas maksimal produk (${planLimits.maxProducts}) tercapai. Silakan upgrade paket.`)
+            return
+        }
         if (!addForm.name.trim() || !addForm.price || !addForm.category) return
         const result = await addProduct({
             name: addForm.name.trim(),
@@ -147,7 +153,13 @@ export default function MenuManagement() {
                     <p className="text-neutral-500 text-base">Atur dan perbarui katalog minuman kamu</p>
                 </div>
                 <button
-                    onClick={() => setShowAddModal(true)}
+                    onClick={() => {
+                        if (products.length >= planLimits.maxProducts) {
+                            toast.error(`Batas maksimal produk (${planLimits.maxProducts}) tercapai. Silakan upgrade paket di menu Langganan.`)
+                        } else {
+                            setShowAddModal(true)
+                        }
+                    }}
                     className="flex items-center justify-center gap-2 bg-[#ff8c00] text-white px-6 py-3 rounded-xl font-bold hover:bg-[#e67e00] transition-all shadow-lg shadow-[#ff8c00]/20"
                 >
                     <span className="material-symbols-outlined">add_circle</span>
@@ -354,39 +366,49 @@ export default function MenuManagement() {
                             </div>
                             <div>
                                 <label className="block text-sm font-bold text-neutral-600 mb-1.5">Gambar Produk</label>
-                                <input
-                                    ref={fileInputRef}
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={handleImageSelect}
-                                    className="hidden"
-                                />
-                                {imagePreview ? (
-                                    <div className="relative group">
-                                        <img
-                                            src={imagePreview}
-                                            alt="Preview"
-                                            className="w-full h-40 object-cover rounded-xl border border-[#ff8c00]/10"
+                                {planLimits.productImages ? (
+                                    <>
+                                        <input
+                                            ref={fileInputRef}
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={handleImageSelect}
+                                            className="hidden"
                                         />
-                                        <button
-                                            type="button"
-                                            onClick={clearImage}
-                                            className="absolute top-2 right-2 size-8 bg-red-500 text-white rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
-                                        >
-                                            <span className="material-symbols-outlined text-sm">close</span>
-                                        </button>
-                                        <p className="text-xs text-neutral-400 mt-1.5">{imageFile?.name} ({(imageFile?.size / 1024).toFixed(0)} KB)</p>
-                                    </div>
+                                        {imagePreview ? (
+                                            <div className="relative group">
+                                                <img
+                                                    src={imagePreview}
+                                                    alt="Preview"
+                                                    className="w-full h-40 object-cover rounded-xl border border-[#ff8c00]/10"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={clearImage}
+                                                    className="absolute top-2 right-2 size-8 bg-red-500 text-white rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                                                >
+                                                    <span className="material-symbols-outlined text-sm">close</span>
+                                                </button>
+                                                <p className="text-xs text-neutral-400 mt-1.5">{imageFile?.name} ({(imageFile?.size / 1024).toFixed(0)} KB)</p>
+                                            </div>
+                                        ) : (
+                                            <button
+                                                type="button"
+                                                onClick={() => fileInputRef.current?.click()}
+                                                className="w-full h-32 border-2 border-dashed border-[#ff8c00]/20 rounded-xl bg-[#fcfaf8] hover:bg-[#ff8c00]/5 hover:border-[#ff8c00]/40 transition-all flex flex-col items-center justify-center gap-2 cursor-pointer group"
+                                            >
+                                                <span className="material-symbols-outlined text-3xl text-[#ff8c00]/30 group-hover:text-[#ff8c00]/60 transition-colors">add_photo_alternate</span>
+                                                <span className="text-xs text-neutral-400 group-hover:text-neutral-600 font-medium transition-colors">Klik untuk upload gambar</span>
+                                                <span className="text-[10px] text-neutral-300">JPG, PNG, WebP · Maks 5MB</span>
+                                            </button>
+                                        )}
+                                    </>
                                 ) : (
-                                    <button
-                                        type="button"
-                                        onClick={() => fileInputRef.current?.click()}
-                                        className="w-full h-32 border-2 border-dashed border-[#ff8c00]/20 rounded-xl bg-[#fcfaf8] hover:bg-[#ff8c00]/5 hover:border-[#ff8c00]/40 transition-all flex flex-col items-center justify-center gap-2 cursor-pointer group"
-                                    >
-                                        <span className="material-symbols-outlined text-3xl text-[#ff8c00]/30 group-hover:text-[#ff8c00]/60 transition-colors">add_photo_alternate</span>
-                                        <span className="text-xs text-neutral-400 group-hover:text-neutral-600 font-medium transition-colors">Klik untuk upload gambar</span>
-                                        <span className="text-[10px] text-neutral-300">JPG, PNG, WebP · Maks 5MB</span>
-                                    </button>
+                                    <div className="w-full text-center py-6 px-4 bg-[#fcfaf8] border border-slate-200 rounded-xl">
+                                        <span className="material-symbols-outlined text-slate-300 text-3xl mb-1">lock</span>
+                                        <p className="text-sm text-slate-500 font-medium">Fitur Gambar Produk terkunci.</p>
+                                        <p className="text-xs text-slate-400 mt-1">Upgrade ke paket Starter untuk mengunggah gambar.</p>
+                                    </div>
                                 )}
                             </div>
                             <button type="submit" className="w-full bg-[#ff8c00] text-white py-3.5 rounded-xl font-bold text-base hover:bg-[#e67e00] transition-all shadow-lg shadow-[#ff8c00]/20 flex items-center justify-center gap-2">
@@ -456,37 +478,46 @@ export default function MenuManagement() {
                             </div>
                             <div>
                                 <label className="block text-sm font-bold text-neutral-600 mb-1.5">Gambar Produk</label>
-                                <input
-                                    ref={editFileInputRef}
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={handleEditImage}
-                                    className="hidden"
-                                />
-                                {editImagePreview ? (
-                                    <div className="relative group">
-                                        <img
-                                            src={editImagePreview}
-                                            alt="Preview"
-                                            className="w-full h-40 object-cover rounded-xl border border-[#ff8c00]/10"
+                                {planLimits.productImages ? (
+                                    <>
+                                        <input
+                                            ref={editFileInputRef}
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={handleEditImage}
+                                            className="hidden"
                                         />
-                                        <button
-                                            type="button"
-                                            onClick={() => editFileInputRef.current?.click()}
-                                            className="absolute top-2 right-2 size-8 bg-[#ff8c00] text-white rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
-                                        >
-                                            <span className="material-symbols-outlined text-sm">edit</span>
-                                        </button>
-                                    </div>
+                                        {editImagePreview ? (
+                                            <div className="relative group">
+                                                <img
+                                                    src={editImagePreview}
+                                                    alt="Preview"
+                                                    className="w-full h-40 object-cover rounded-xl border border-[#ff8c00]/10"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => editFileInputRef.current?.click()}
+                                                    className="absolute top-2 right-2 size-8 bg-[#ff8c00] text-white rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                                                >
+                                                    <span className="material-symbols-outlined text-sm">edit</span>
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <button
+                                                type="button"
+                                                onClick={() => editFileInputRef.current?.click()}
+                                                className="w-full h-32 border-2 border-dashed border-[#ff8c00]/20 rounded-xl bg-[#fcfaf8] hover:bg-[#ff8c00]/5 hover:border-[#ff8c00]/40 transition-all flex flex-col items-center justify-center gap-2 cursor-pointer group"
+                                            >
+                                                <span className="material-symbols-outlined text-3xl text-[#ff8c00]/30 group-hover:text-[#ff8c00]/60 transition-colors">add_photo_alternate</span>
+                                                <span className="text-xs text-neutral-400 group-hover:text-neutral-600 font-medium">Klik untuk upload gambar</span>
+                                            </button>
+                                        )}
+                                    </>
                                 ) : (
-                                    <button
-                                        type="button"
-                                        onClick={() => editFileInputRef.current?.click()}
-                                        className="w-full h-32 border-2 border-dashed border-[#ff8c00]/20 rounded-xl bg-[#fcfaf8] hover:bg-[#ff8c00]/5 hover:border-[#ff8c00]/40 transition-all flex flex-col items-center justify-center gap-2 cursor-pointer group"
-                                    >
-                                        <span className="material-symbols-outlined text-3xl text-[#ff8c00]/30 group-hover:text-[#ff8c00]/60 transition-colors">add_photo_alternate</span>
-                                        <span className="text-xs text-neutral-400 group-hover:text-neutral-600 font-medium">Klik untuk upload gambar</span>
-                                    </button>
+                                    <div className="w-full text-center py-6 px-4 bg-[#fcfaf8] border border-slate-200 rounded-xl mt-2">
+                                        <span className="material-symbols-outlined text-slate-300 text-3xl mb-1">lock</span>
+                                        <p className="text-sm text-slate-500 font-medium">Fitur Gambar Produk terkunci.</p>
+                                    </div>
                                 )}
                             </div>
                             <button type="submit" className="w-full bg-[#ff8c00] text-white py-3.5 rounded-xl font-bold text-base hover:bg-[#e67e00] transition-all shadow-lg shadow-[#ff8c00]/20 flex items-center justify-center gap-2">

@@ -6,11 +6,13 @@ import { useTenantContext } from '../context/TenantContext'
  * Guards admin-only routes. Uses tenant-scoped admin check (isTenantAdmin)
  * so that an admin of Tenant A cannot access Tenant B's panel.
  */
-export default function ProtectedRoute({ children }) {
+export default function ProtectedRoute({ children, allowedRoles = ['admin'] }) {
     const { user, loading: authLoading } = useAuth()
-    const { slug, isTenantAdmin, tenantAdminLoading } = useTenantContext()
+    const { slug, isTenantAdmin, isTenantStaff, tenantAdminLoading } = useTenantContext()
 
-    // Wait for both auth session and tenant-scoped admin check
+    // Wait for BOTH auth session AND tenant role check to complete
+    // before making any redirect decision. Without this guard,
+    // tenantAdminLoading=true initially causes a flash-redirect to /auth.
     if (authLoading || tenantAdminLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-[#fcfaf8]">
@@ -22,8 +24,16 @@ export default function ProtectedRoute({ children }) {
         )
     }
 
-    // Must be logged in AND be an admin of THIS specific tenant
-    if (!user || !isTenantAdmin) {
+    // Only evaluate access AFTER loading is fully done
+    if (!user) {
+        return <Navigate to={`/${slug}/auth`} replace />
+    }
+
+    const hasAccess = 
+        (allowedRoles.includes('admin') && isTenantAdmin) || 
+        (allowedRoles.includes('staff') && isTenantStaff)
+
+    if (!hasAccess) {
         return <Navigate to={`/${slug}/auth`} replace />
     }
 

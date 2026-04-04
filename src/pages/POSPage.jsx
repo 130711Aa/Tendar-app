@@ -136,7 +136,23 @@ export default function POSPage() {
     const { addOrder } = useOrders()
     const { user } = useAuth()
     const { btConnected, btPrinterName, handleConnectPrinter, handleDirectPrint } = usePrinter()
-    const { tenantName } = useTenantContext()
+    const { tenantName, slug, planLimits } = useTenantContext()
+
+    if (planLimits && !planLimits.posEnabled) {
+        return (
+            <div className="min-h-screen bg-[#fcfaf8] flex flex-col items-center justify-center p-6 text-center animate-fade-in">
+                <span className="material-symbols-outlined text-6xl text-slate-300 mb-4">lock</span>
+                <h1 className="text-2xl font-bold text-slate-800 mb-2">Fitur Kasir Terkunci</h1>
+                <p className="text-slate-500 mb-6 max-w-md">Paket Anda saat ini tidak mendukung fitur Point of Sale (POS). Silakan upgrade paket untuk menggunakan fitur ini.</p>
+                <button
+                    onClick={() => { sessionStorage.removeItem('pos_mode'); window.location.href = `/${slug}/admin/billing` }}
+                    className="bg-[#ff8c00] text-white px-6 py-3 rounded-xl font-bold hover:bg-[#e07800] transition-colors shadow-lg"
+                >
+                    Lihat Paket Langganan
+                </button>
+            </div>
+        )
+    }
 
     // POS-local cart (separate from customer CartContext)
     const [cart, setCart] = useState([])
