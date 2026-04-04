@@ -21,45 +21,49 @@ export default function AuthCallbackPage() {
             handled = true
 
             setStatus('Akun terhubung! Mencari toko Anda...')
+            console.log('[AuthCallback] User ID:', user.id, '| Email:', user.email)
 
             // Check for slug from URL (came from tenant auth page e.g. /tendar/auth)
             const urlParams = new URLSearchParams(window.location.search)
-            const slugFromUrl = urlParams.get('slug')
+            const slugFromUrl = urlParams.get('slug') || sessionStorage.getItem('tendar_login_slug')
+            console.log('[AuthCallback] slugFromUrl:', slugFromUrl)
+
+            // Clean up slug from sessionStorage
+            sessionStorage.removeItem('tendar_login_slug')
 
             // Check for Google OAuth new-user pending store data
             const pendingStore = sessionStorage.getItem('tendar_pending_store')
 
             try {
-                // Check if user is admin of any tenant
-                const { data: adminRole } = await supabase
+                // Step 1: Get user's role and tenant_id (separate queries for compatibility)
+                const { data: roleData, error: roleError } = await supabase
                     .from('user_roles')
-                    .select('role, tenants(slug)')
+                    .select('role, tenant_id')
                     .eq('user_id', user.id)
-                    .eq('role', 'admin')
+                    .in('role', ['admin', 'staff'])
                     .limit(1)
                     .maybeSingle()
 
-                if (adminRole?.tenants?.slug) {
-                    const slug = adminRole.tenants.slug
-                    setStatus(`Selamat datang! Mengarahkan ke dashboard...`)
-                    navigate(`/${slug}/admin`, { replace: true })
-                    return
-                }
+                console.log('[AuthCallback] roleData:', roleData, '| roleError:', roleError)
 
-                // Check if user is staff of any tenant
-                const { data: staffRole } = await supabase
-                    .from('user_roles')
-                    .select('role, tenants(slug)')
-                    .eq('user_id', user.id)
-                    .eq('role', 'staff')
-                    .limit(1)
-                    .maybeSingle()
+                if (roleData?.tenant_id) {
+                    // Step 2: Get the tenant slug
+                    const { data: tenantData } = await supabase
+                        .from('tenants')
+                        .select('slug')
+                        .eq('id', roleData.tenant_id)
+                        .single()
 
-                if (staffRole?.tenants?.slug) {
-                    const slug = staffRole.tenants.slug
-                    setStatus('Mengarahkan ke kasir...')
-                    navigate(`/${staffRole.tenants.slug}/pos`, { replace: true })
-                    return
+                    console.log('[AuthCallback] tenantData:', tenantData)
+
+                    if (tenantData?.slug) {
+                        const dest = roleData.role === 'admin'
+                            ? `/${tenantData.slug}/admin`
+                            : `/${tenantData.slug}/pos`
+                        setStatus('Selamat datang! Mengarahkan ke dashboard...')
+                        navigate(dest, { replace: true })
+                        return
+                    }
                 }
 
                 // Try user_metadata for slug (from email registration flow)

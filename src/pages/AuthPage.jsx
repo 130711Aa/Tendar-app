@@ -60,6 +60,8 @@ export default function AuthPage() {
     }
 
     const handleGoogleLogin = async () => {
+        // Save slug to sessionStorage as fallback (in case query params get stripped)
+        sessionStorage.setItem('tendar_login_slug', slug)
         const redirectTo = `${window.location.origin}/auth/callback?slug=${slug}`
         const result = await loginWithGoogle(redirectTo)
         if (!result.success) {
