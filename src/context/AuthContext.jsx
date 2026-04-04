@@ -125,17 +125,28 @@ export function AuthProvider({ children }) {
         return { success: true, data }
     }
 
+    const loginWithGoogle = async (redirectTo) => {
+        const { error } = await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+                redirectTo: redirectTo || `${window.location.origin}/auth/callback`,
+            },
+        })
+        if (error) return { success: false, error: error.message }
+        return { success: true }
+    }
+
     const value = {
         user,
         session,
         loading,
         isAdmin,
-        adminChecked, // true once checkAdmin has completed at least once
-        // Compatibility with existing code asking for 'isAuthenticated'
+        adminChecked,
         isAuthenticated: !!user,
         login,
         signup,
         logout,
+        loginWithGoogle,
         updatePassword,
         isRecovering,
         setIsRecovering
