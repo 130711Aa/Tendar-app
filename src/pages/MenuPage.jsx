@@ -4,9 +4,11 @@ import { useCategories } from '../context/CategoriesContext'
 import { useProducts } from '../context/ProductsContext'
 import { useCart } from '../context/CartContext'
 import { useStoreStatus } from '../context/StoreStatusContext'
+import { useTenantContext } from '../context/TenantContext'
 import { formatRupiah } from '../lib/utils'
 
 export default function MenuPage() {
+    const { tenantName } = useTenantContext()
     const { filterCategories, loading: catLoading } = useCategories()
     const { availableProducts, loading: prodLoading } = useProducts()
     const { totalItems, totalPrice, setIsOpen } = useCart()
@@ -63,18 +65,18 @@ export default function MenuPage() {
                     <div className="absolute inset-0 overflow-hidden pointer-events-none">
                         <div className="absolute -top-10 -right-10 w-40 md:w-64 h-40 md:h-64 bg-white/5 rounded-full blur-2xl"></div>
                         <div className="absolute bottom-0 left-0 w-60 md:w-96 h-60 md:h-96 bg-white/5 rounded-full blur-3xl -translate-x-1/2 translate-y-1/2"></div>
-                        <div className="absolute top-4 right-4 md:top-8 md:right-12 text-4xl md:text-8xl opacity-20 select-none">🍊</div>
-                        <div className="absolute bottom-2 left-4 md:bottom-8 md:left-16 text-3xl md:text-7xl opacity-15 select-none">🥭</div>
+                        <div className="absolute top-4 right-4 md:top-8 md:right-12 text-5xl md:text-9xl opacity-[0.07] select-none material-symbols-outlined blur-sm">restaurant</div>
+                        <div className="absolute bottom-2 left-4 md:bottom-8 md:left-16 text-5xl md:text-9xl opacity-[0.07] select-none material-symbols-outlined blur-[2px]">shopping_bag</div>
                     </div>
                     <div className="relative z-10">
                         <span className="inline-block bg-white/20 backdrop-blur-sm text-white px-3 py-1 md:px-4 md:py-1.5 rounded-full text-xs md:text-sm font-semibold mb-2 md:mb-4">
-                            🧃 Fresh & Ready to Go!
+                            🏪 Buka & Siap Melayani!
                         </span>
-                        <h1 className="text-xl md:text-5xl font-black tracking-tight text-white mb-1 md:mb-3 leading-tight">
-                            Segarnya Tiada Tara!
+                        <h1 className="text-xl md:text-5xl font-black tracking-tight text-white mb-1 md:mb-3 leading-tight truncate">
+                            Selamat Datang{tenantName ? ` di ${tenantName}` : '!'}
                         </h1>
                         <p className="text-white/80 text-xs md:text-lg max-w-lg leading-relaxed">
-                            Pilih jus segar, smoothies, atau mocktails favoritmu.
+                            Pilih dan pesan menu favoritmu dengan mudah secara online.
                         </p>
                     </div>
                 </div>
@@ -145,11 +147,11 @@ export default function MenuPage() {
                     <div className="bg-white rounded-2xl border border-[#ff8c00]/10 p-8 shadow-sm">
                         <div className="flex items-center justify-center gap-3">
                             <div className="size-12 rounded-xl bg-[#ff8c00]/10 text-[#ff8c00] flex items-center justify-center">
-                                <span className="material-symbols-outlined">verified</span>
+                                <span className="material-symbols-outlined">thumb_up</span>
                             </div>
                             <div className="text-left">
-                                <p className="text-sm font-bold">Fresh & Berkualitas</p>
-                                <p className="text-xs text-neutral-500">100% buah segar</p>
+                                <p className="text-sm font-bold">Layanan Terbaik</p>
+                                <p className="text-xs text-neutral-500">Kualitas terjamin untuk setiap pesanan</p>
                             </div>
                         </div>
                     </div>
