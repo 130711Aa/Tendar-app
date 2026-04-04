@@ -1,109 +1,11 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import toast from 'react-hot-toast'
-import { supabase } from '../lib/supabase'
 import { useOrders } from '../context/OrdersContext'
 import { useCategories } from '../context/CategoriesContext'
 import { useProducts } from '../context/ProductsContext'
 import { useStoreStatus } from '../context/StoreStatusContext'
 import { useTenantContext } from '../context/TenantContext'
 import { formatRupiah } from '../lib/utils'
-
-function BusinessContactCard() {
-    const { tenantId, tenantWhatsapp } = useTenantContext()
-    const [isEditing, setIsEditing] = useState(false)
-    const [whatsapp, setWhatsapp] = useState(tenantWhatsapp || '')
-    const [loading, setLoading] = useState(false)
-
-    // Sync if context updates
-    useEffect(() => {
-        setWhatsapp(tenantWhatsapp || '')
-    }, [tenantWhatsapp])
-
-    const handleSave = async () => {
-        if (!whatsapp) return toast.error('Nomor WhatsApp tidak boleh kosong')
-        
-        // Extract only digits
-        let formattedStr = whatsapp.replace(/[^0-9]/g, '')
-        if (formattedStr.startsWith('0')) {
-            formattedStr = '62' + formattedStr.slice(1)
-        }
-
-        setLoading(true)
-        try {
-            const { error } = await supabase
-                .from('tenants')
-                .update({ whatsapp: formattedStr })
-                .eq('id', tenantId)
-
-            if (error) throw error
-            
-            toast.success('Contact Person berhasil diperbarui!')
-            setIsEditing(false)
-            // Reload page or let the context refresh logic handle it (we don't have auto-refresh set up for the context yet, so we reload to be safe and lazy for now, but better to just reload)
-            window.location.reload()
-        } catch (err) {
-            console.error(err)
-            toast.error('Gagal memperbarui Contact Person')
-        } finally {
-            setLoading(false)
-        }
-    }
-
-    return (
-        <div className="bg-white rounded-xl border border-blue-200/60 p-5 shadow-sm">
-            <div className="flex items-start justify-between flex-wrap gap-4">
-                <div className="flex items-center gap-4">
-                    <div className="size-10 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center">
-                        <span className="material-symbols-outlined">support_agent</span>
-                    </div>
-                    <div>
-                        <h3 className="font-bold text-neutral-800">Contact Person (Payment Gateway)</h3>
-                        <p className="text-sm text-neutral-500">Syarat wajib bagi Payment Gateway untuk memverifikasi toko Anda.</p>
-                    </div>
-                </div>
-                
-                {isEditing ? (
-                    <div className="flex items-center gap-2 w-full sm:w-auto">
-                        <input 
-                            type="tel"
-                            value={whatsapp}
-                            onChange={e => setWhatsapp(e.target.value)}
-                            placeholder="Contoh: 0812345678"
-                            className="bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2 text-sm w-full sm:w-48 focus:ring-2 focus:ring-blue-500/20 outline-none"
-                            autoFocus
-                        />
-                        <button 
-                            onClick={handleSave} 
-                            disabled={loading}
-                            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-700 disabled:opacity-50 whitespace-nowrap"
-                        >
-                            {loading ? 'Menyimpan...' : 'Simpan'}
-                        </button>
-                        <button 
-                            onClick={() => { setIsEditing(false); setWhatsapp(tenantWhatsapp || '') }}
-                            className="bg-neutral-100 text-neutral-600 px-3 py-2 rounded-lg text-sm font-bold hover:bg-neutral-200"
-                        >
-                            Batal
-                        </button>
-                    </div>
-                ) : (
-                    <div className="flex items-center gap-4 w-full sm:w-auto mt-2 sm:mt-0">
-                        <div className="bg-neutral-50 border border-neutral-200 px-4 py-2 rounded-lg text-sm font-semibold flex-1 sm:flex-none">
-                            {tenantWhatsapp ? `+${tenantWhatsapp}` : <span className="text-red-500 italic">Belum diatur</span>}
-                        </div>
-                        <button 
-                            onClick={() => setIsEditing(true)}
-                            className="bg-neutral-100 text-neutral-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-neutral-200 whitespace-nowrap"
-                        >
-                            Edit
-                        </button>
-                    </div>
-                )}
-            </div>
-        </div>
-    )
-}
 
 export default function AdminDashboard() {
     const { slug, tenantName } = useTenantContext()
@@ -240,9 +142,6 @@ export default function AdminDashboard() {
                         </div>
                     </div>
                 </div>
-
-                {/* Business Contact Configuration for Payment Gateway */}
-                <BusinessContactCard />
 
                 {/* Summary Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
