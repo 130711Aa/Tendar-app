@@ -7,15 +7,19 @@ import { useAuth } from '../context/AuthContext'
  * of a SPECIFIC tenant. This is the tenant-scoped version of isAdmin.
  *
  * @param {string|null} tenantId - The tenant to check admin access for
- * @returns {{ isTenantAdmin: boolean, tenantAdminLoading: boolean }}
+ * @returns {{ isTenantAdmin: boolean, isTenantStaff: boolean, tenantAdminLoading: boolean }}
  */
 export function useTenantAdmin(tenantId) {
     const { user } = useAuth()
     const [isTenantAdmin, setIsTenantAdmin] = useState(false)
     const [isTenantStaff, setIsTenantStaff] = useState(false)
-    // Start loading only if we already have both user and tenantId — otherwise
-    // the effect will immediately set loading=false anyway, causing a flicker.
-    const [tenantAdminLoading, setTenantAdminLoading] = useState(() => !!(user && tenantId))
+
+    // IMPORTANT: Start as loading=true when user is authenticated.
+    // This prevents a one-frame window where tenantLoading just became false
+    // but tenantAdminLoading hasn't been set to true yet (React renders before
+    // effects run), causing ProtectedRoute to see isTenantAdmin=false and
+    // redirect to /auth — especially visible after Google OAuth full-page redirect.
+    const [tenantAdminLoading, setTenantAdminLoading] = useState(() => !!user)
     const prevKeyRef = useRef(null)
 
     useEffect(() => {
@@ -25,13 +29,22 @@ export function useTenantAdmin(tenantId) {
         if (key === prevKeyRef.current) return
         prevKeyRef.current = key
 
-        if (!user || !tenantId) {
+        if (!user) {
+            // Not authenticated — definitively not admin
             setIsTenantAdmin(false)
             setIsTenantStaff(false)
             setTenantAdminLoading(false)
             return
         }
 
+        if (!tenantId) {
+            // User is authenticated but tenantId is not yet resolved.
+            // Keep loading=true so ProtectedRoute doesn't prematurely deny access.
+            setTenantAdminLoading(true)
+            return
+        }
+
+        // Both user and tenantId are available — query the role
         setTenantAdminLoading(true)
 
         supabase
