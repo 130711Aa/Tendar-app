@@ -8,12 +8,14 @@ import { useTenantContext } from '../context/TenantContext'
  */
 export default function ProtectedRoute({ children, allowedRoles = ['admin'] }) {
     const { user, loading: authLoading } = useAuth()
-    const { slug, isTenantAdmin, isTenantStaff, tenantAdminLoading } = useTenantContext()
+    const { slug, isTenantAdmin, isTenantStaff, tenantAdminLoading, tenantLoading } = useTenantContext()
 
-    // Wait for BOTH auth session AND tenant role check to complete
-    // before making any redirect decision. Without this guard,
-    // tenantAdminLoading=true initially causes a flash-redirect to /auth.
-    if (authLoading || tenantAdminLoading) {
+    // Wait for BOTH auth session AND tenant fetch AND tenant role check to complete
+    // before making any redirect decision.
+    // Critical: tenantLoading must be included — after Google OAuth redirect (full page
+    // reload), TenantContext fetches tenantId async. Without this guard, tenantAdminLoading
+    // resolves to false immediately (tenantId=null) causing a premature redirect to /auth.
+    if (authLoading || tenantLoading || tenantAdminLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-[#fcfaf8]">
                 <div className="flex flex-col items-center gap-3">
