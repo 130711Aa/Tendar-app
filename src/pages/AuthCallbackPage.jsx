@@ -21,12 +21,10 @@ export default function AuthCallbackPage() {
             handled = true
 
             setStatus('Akun terhubung! Mencari toko Anda...')
-            console.log('[AuthCallback] User ID:', user.id, '| Email:', user.email)
 
             // Check for slug from URL (came from tenant auth page e.g. /tendar/auth)
             const urlParams = new URLSearchParams(window.location.search)
             const slugFromUrl = urlParams.get('slug') || sessionStorage.getItem('tendar_login_slug')
-            console.log('[AuthCallback] slugFromUrl:', slugFromUrl)
 
             // Clean up slug from sessionStorage
             sessionStorage.removeItem('tendar_login_slug')
@@ -36,15 +34,13 @@ export default function AuthCallbackPage() {
 
             try {
                 // Step 1: Get user's role and tenant_id (separate queries for compatibility)
-                const { data: roleData, error: roleError } = await supabase
+                const { data: roleData } = await supabase
                     .from('user_roles')
                     .select('role, tenant_id')
                     .eq('user_id', user.id)
                     .in('role', ['admin', 'staff'])
                     .limit(1)
                     .maybeSingle()
-
-                console.log('[AuthCallback] roleData:', roleData, '| roleError:', roleError)
 
                 if (roleData?.tenant_id) {
                     // Step 2: Get the tenant slug
@@ -53,8 +49,6 @@ export default function AuthCallbackPage() {
                         .select('slug')
                         .eq('id', roleData.tenant_id)
                         .single()
-
-                    console.log('[AuthCallback] tenantData:', tenantData)
 
                     if (tenantData?.slug) {
                         const dest = roleData.role === 'admin'
