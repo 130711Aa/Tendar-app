@@ -33,7 +33,40 @@ export default function AuthCallbackPage() {
             const pendingStore = sessionStorage.getItem('tendar_pending_store')
 
             try {
-                // Step 1: Get user's role and tenant_id (separate queries for compatibility)
+                // If they logged in from a specific store, prioritize that store's context
+                if (slugFromUrl) {
+                    const { data: tenantData } = await supabase
+                        .from('tenants')
+                        .select('id')
+                        .eq('slug', slugFromUrl)
+                        .maybeSingle()
+                    
+                    if (tenantData) {
+                        const { data: roleData } = await supabase
+                            .from('user_roles')
+                            .select('role')
+                            .eq('user_id', user.id)
+                            .eq('tenant_id', tenantData.id)
+                            .maybeSingle()
+                        
+                        if (roleData?.role === 'admin') {
+                            setStatus('Selamat datang Admin! Mengarahkan ke dashboard...')
+                            navigate(`/${slugFromUrl}/admin`, { replace: true })
+                            return
+                        } else if (roleData?.role === 'staff') {
+                            setStatus('Selamat datang Staff! Mengarahkan ke POS...')
+                            navigate(`/${slugFromUrl}/pos`, { replace: true })
+                            return
+                        }
+                    }
+                    
+                    // If not admin/staff of THIS store, they are just a buyer here.
+                    setStatus('Mengarahkan ke toko...')
+                    navigate(`/${slugFromUrl}`, { replace: true })
+                    return
+                }
+
+                // If no specific store context (logged in via global URL), find ANY store they manage
                 const { data: roleData } = await supabase
                     .from('user_roles')
                     .select('role, tenant_id')
@@ -72,13 +105,6 @@ export default function AuthCallbackPage() {
                 if (pendingStore) {
                     setStatus('Akun baru! Melanjutkan pengaturan toko...')
                     navigate('/register?google=1', { replace: true })
-                    return
-                }
-
-                // Came from a store auth page but has no role — redirect to store menu
-                if (slugFromUrl) {
-                    setStatus('Mengarahkan ke toko...')
-                    navigate(`/${slugFromUrl}`, { replace: true })
                     return
                 }
 
