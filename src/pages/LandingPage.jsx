@@ -185,50 +185,69 @@ export default function LandingPage() {
         setRedirecting(true)
 
         try {
-            // Check admin role
+            // Find any store they manage (admin or staff)
             const { data: roleData } = await supabase
                 .from('user_roles')
-                .select('role')
+                .select('role, tenant_id')
                 .eq('user_id', loggedUser.id)
-                .eq('role', 'admin')
+                .in('role', ['admin', 'staff'])
+                .limit(1)
                 .maybeSingle()
 
-            if (roleData) {
-                // Find their tenant slug
+            if (roleData?.tenant_id) {
+                // Get the tenant slug
                 const { data: tenantData } = await supabase
                     .from('tenants')
                     .select('slug')
-                    .eq('owner_id', loggedUser.id)
+                    .eq('id', roleData.tenant_id)
                     .maybeSingle()
 
                 if (tenantData?.slug) {
-                    navigate(`/${tenantData.slug}/admin`)
+                    const dest = roleData.role === 'admin'
+                        ? `/${tenantData.slug}/admin`
+                        : `/${tenantData.slug}/pos`
+                    navigate(dest)
                     return
                 }
             }
-            // Not admin: stay on landing page, show profile
+            
+            // Not admin/staff: stay on landing page, show profile
             toast.success(`Selamat datang, ${loggedUser.user_metadata?.name || loggedUser.email}!`)
         } finally {
             setRedirecting(false)
         }
     }
 
-    // If already logged in as admin (e.g. refreshed page), auto-redirect
+    // If already logged in (e.g. refreshed page), auto-redirect
     useEffect(() => {
-        if (!loading && isAuthenticated && isAdmin && user) {
+        if (!loading && isAuthenticated && user) {
             const redirect = async () => {
-                const { data: tenantData } = await supabase
-                    .from('tenants')
-                    .select('slug')
-                    .eq('owner_id', user.id)
+                const { data: roleData } = await supabase
+                    .from('user_roles')
+                    .select('role, tenant_id')
+                    .eq('user_id', user.id)
+                    .in('role', ['admin', 'staff'])
+                    .limit(1)
                     .maybeSingle()
-                if (tenantData?.slug) {
-                    navigate(`/${tenantData.slug}/admin`, { replace: true })
+
+                if (roleData?.tenant_id) {
+                    const { data: tenantData } = await supabase
+                        .from('tenants')
+                        .select('slug')
+                        .eq('id', roleData.tenant_id)
+                        .maybeSingle()
+
+                    if (tenantData?.slug) {
+                        const dest = roleData.role === 'admin'
+                            ? `/${tenantData.slug}/admin`
+                            : `/${tenantData.slug}/pos`
+                        navigate(dest, { replace: true })
+                    }
                 }
             }
             redirect()
         }
-    }, [loading, isAuthenticated, isAdmin, user, navigate])
+    }, [loading, isAuthenticated, user, navigate])
 
     const handleLogout = async () => {
         await logout()
