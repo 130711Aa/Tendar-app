@@ -1,8 +1,239 @@
 import { useNavigate } from 'react-router-dom'
+import { useState, useEffect, useRef } from 'react'
 import { BrandLogo } from '../components/BrandLogo'
+import { useAuth } from '../context/AuthContext'
+import { supabase } from '../lib/supabase'
+import { toast } from 'react-hot-toast'
 
+// ── Login Modal ───────────────────────────────────────────────────────
+function LoginModal({ onClose, onSuccess }) {
+    const { login, loginWithGoogle } = useAuth()
+    const [email, setEmail] = useState('')
+    const [password, setPassword] = useState('')
+    const [loading, setLoading] = useState(false)
+    const [showPw, setShowPw] = useState(false)
+
+    const handleSubmit = async (e) => {
+        e.preventDefault()
+        setLoading(true)
+        const result = await login(email, password)
+        setLoading(false)
+        if (!result.success) {
+            toast.error(result.error || 'Email atau password salah')
+        } else {
+            onSuccess(result.data.user)
+        }
+    }
+
+    const handleGoogle = async () => {
+        await loginWithGoogle(`${window.location.origin}/auth/callback?next=/`)
+    }
+
+    return (
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+            onClick={(e) => e.target === e.currentTarget && onClose()}
+        >
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden animate-fade-in">
+                {/* Header */}
+                <div className="bg-gradient-to-br from-[#ff8c00] to-orange-400 px-8 pt-8 pb-6 text-white text-center">
+                    <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                        <span className="material-symbols-outlined text-[32px]">lock_open</span>
+                    </div>
+                    <h2 className="text-xl font-black">Masuk ke Tendar</h2>
+                    <p className="text-orange-100 text-sm mt-1">Akses dashboard toko kamu</p>
+                </div>
+
+                {/* Body */}
+                <div className="px-8 py-6 space-y-4">
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-600 mb-1.5">Email</label>
+                            <input
+                                type="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                placeholder="nama@email.com"
+                                required
+                                className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#ff8c00]/40 focus:border-[#ff8c00] transition-all"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-600 mb-1.5">Password</label>
+                            <div className="relative">
+                                <input
+                                    type={showPw ? 'text' : 'password'}
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    placeholder="••••••••"
+                                    required
+                                    className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#ff8c00]/40 focus:border-[#ff8c00] transition-all pr-11"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPw(v => !v)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                    tabIndex={-1}
+                                >
+                                    <span className="material-symbols-outlined text-[20px]">
+                                        {showPw ? 'visibility_off' : 'visibility'}
+                                    </span>
+                                </button>
+                            </div>
+                        </div>
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="w-full bg-[#ff8c00] text-white py-3 rounded-xl font-bold hover:bg-[#e07800] disabled:opacity-60 transition-all flex items-center justify-center gap-2"
+                        >
+                            {loading ? (
+                                <><div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />Masuk...</>
+                            ) : (
+                                <><span className="material-symbols-outlined text-[18px]">login</span>Masuk</>
+                            )}
+                        </button>
+                    </form>
+
+                    <div className="flex items-center gap-3 text-slate-300">
+                        <div className="flex-1 h-px bg-slate-100" />
+                        <span className="text-xs text-slate-400">atau</span>
+                        <div className="flex-1 h-px bg-slate-100" />
+                    </div>
+
+                    <button
+                        onClick={handleGoogle}
+                        className="w-full flex items-center justify-center gap-3 border border-slate-200 text-slate-600 py-3 rounded-xl text-sm font-semibold hover:bg-slate-50 transition-all"
+                    >
+                        <svg viewBox="0 0 48 48" className="w-4 h-4"><path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"/><path fill="#FF3D00" d="m6.306 14.691 6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z"/><path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0 1 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"/><path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 0 1-4.087 5.571l.003-.002 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z"/></svg>
+                        Masuk dengan Google
+                    </button>
+
+                    <p className="text-center text-xs text-slate-400">
+                        Belum punya akun?{' '}
+                        <a href="/register" className="text-[#ff8c00] font-semibold hover:underline">Daftar gratis</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    )
+}
+
+// ── Profile Dropdown ──────────────────────────────────────────────────
+function ProfileDropdown({ user, onLogout }) {
+    const [open, setOpen] = useState(false)
+    const ref = useRef()
+    const displayName = user.user_metadata?.name || user.email?.split('@')[0] || 'Pengguna'
+    const initials = displayName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+
+    useEffect(() => {
+        const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+        document.addEventListener('mousedown', handler)
+        return () => document.removeEventListener('mousedown', handler)
+    }, [])
+
+    return (
+        <div className="relative" ref={ref}>
+            <button
+                onClick={() => setOpen(v => !v)}
+                className="flex items-center gap-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-full px-3 py-1.5 transition-all group"
+                aria-label="Menu profil"
+            >
+                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#ff8c00] to-orange-400 flex items-center justify-center text-white text-xs font-black">
+                    {initials}
+                </div>
+                <span className="text-sm font-semibold text-slate-700 max-w-[120px] truncate hidden sm:block">
+                    {displayName}
+                </span>
+                <span className={`material-symbols-outlined text-slate-400 text-[18px] transition-transform ${open ? 'rotate-180' : ''}`}>
+                    expand_more
+                </span>
+            </button>
+
+            {open && (
+                <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-100 rounded-2xl shadow-xl overflow-hidden z-50 animate-fade-in">
+                    {/* User info */}
+                    <div className="px-4 py-3 bg-orange-50 border-b border-slate-100">
+                        <p className="text-sm font-bold text-slate-800 truncate">{displayName}</p>
+                        <p className="text-xs text-slate-500 truncate">{user.email}</p>
+                    </div>
+
+                    <div className="py-1.5">
+                        <button
+                            onClick={() => { setOpen(false); onLogout() }}
+                            className="w-full px-4 py-2.5 text-left text-sm text-red-600 font-medium hover:bg-red-50 flex items-center gap-2.5 transition-colors"
+                        >
+                            <span className="material-symbols-outlined text-[18px]">logout</span>
+                            Keluar
+                        </button>
+                    </div>
+                </div>
+            )}
+        </div>
+    )
+}
+
+// ── Main LandingPage ──────────────────────────────────────────────────
 export default function LandingPage() {
     const navigate = useNavigate()
+    const { user, isAdmin, isAuthenticated, logout, loading } = useAuth()
+    const [showLoginModal, setShowLoginModal] = useState(false)
+    const [redirecting, setRedirecting] = useState(false)
+
+    // After login, check role and redirect or stay
+    const handleLoginSuccess = async (loggedUser) => {
+        setShowLoginModal(false)
+        setRedirecting(true)
+
+        try {
+            // Check admin role
+            const { data: roleData } = await supabase
+                .from('user_roles')
+                .select('role')
+                .eq('user_id', loggedUser.id)
+                .eq('role', 'admin')
+                .maybeSingle()
+
+            if (roleData) {
+                // Find their tenant slug
+                const { data: tenantData } = await supabase
+                    .from('tenants')
+                    .select('slug')
+                    .eq('owner_id', loggedUser.id)
+                    .maybeSingle()
+
+                if (tenantData?.slug) {
+                    navigate(`/${tenantData.slug}/admin`)
+                    return
+                }
+            }
+            // Not admin: stay on landing page, show profile
+            toast.success(`Selamat datang, ${loggedUser.user_metadata?.name || loggedUser.email}!`)
+        } finally {
+            setRedirecting(false)
+        }
+    }
+
+    // If already logged in as admin (e.g. refreshed page), auto-redirect
+    useEffect(() => {
+        if (!loading && isAuthenticated && isAdmin && user) {
+            const redirect = async () => {
+                const { data: tenantData } = await supabase
+                    .from('tenants')
+                    .select('slug')
+                    .eq('owner_id', user.id)
+                    .maybeSingle()
+                if (tenantData?.slug) {
+                    navigate(`/${tenantData.slug}/admin`, { replace: true })
+                }
+            }
+            redirect()
+        }
+    }, [loading, isAuthenticated, isAdmin, user, navigate])
+
+    const handleLogout = async () => {
+        await logout()
+        toast.success('Berhasil keluar.')
+    }
 
     const features = [
         { icon: 'restaurant_menu', title: 'Menu Digital', desc: 'Manajemen menu produk lengkap dengan foto, harga, dan kategori.' },
@@ -27,12 +258,32 @@ export default function LandingPage() {
             <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100 px-6 py-4 flex items-center justify-between">
                 <BrandLogo />
                 <div className="flex items-center gap-3">
-                    <button
-                        onClick={() => navigate('/register')}
-                        className="bg-[#ff8c00] text-white px-5 py-2 rounded-full text-sm font-semibold hover:bg-[#e07800] transition-all"
-                    >
-                        Daftar Gratis
-                    </button>
+                    {redirecting ? (
+                        <div className="flex items-center gap-2 text-slate-500 text-sm">
+                            <div className="w-4 h-4 border-2 border-[#ff8c00]/30 border-t-[#ff8c00] rounded-full animate-spin" />
+                            <span>Mengalihkan...</span>
+                        </div>
+                    ) : isAuthenticated && user ? (
+                        /* ── Logged in: show profile ── */
+                        <ProfileDropdown user={user} onLogout={handleLogout} />
+                    ) : (
+                        /* ── Not logged in: show buttons ── */
+                        <>
+                            <button
+                                id="landing-login-btn"
+                                onClick={() => setShowLoginModal(true)}
+                                className="border border-slate-200 text-slate-600 px-5 py-2 rounded-full text-sm font-semibold hover:bg-slate-50 hover:border-slate-300 transition-all"
+                            >
+                                Masuk
+                            </button>
+                            <button
+                                onClick={() => navigate('/register')}
+                                className="bg-[#ff8c00] text-white px-5 py-2 rounded-full text-sm font-semibold hover:bg-[#e07800] transition-all shadow-sm shadow-orange-200"
+                            >
+                                Daftar Gratis
+                            </button>
+                        </>
+                    )}
                 </div>
             </nav>
 
@@ -158,6 +409,14 @@ export default function LandingPage() {
                     </a>
                 </p>
             </footer>
+
+            {/* Login Modal */}
+            {showLoginModal && (
+                <LoginModal
+                    onClose={() => setShowLoginModal(false)}
+                    onSuccess={handleLoginSuccess}
+                />
+            )}
         </div>
     )
 }
