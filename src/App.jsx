@@ -22,6 +22,7 @@ import MenuPage from './pages/MenuPage'
 import LandingPage from './pages/LandingPage'
 import RegisterTenantPage from './pages/RegisterTenantPage'
 import AuthCallbackPage from './pages/AuthCallbackPage'
+import DocsPage from './pages/DocsPage'
 
 // Lazy load admin & POS pages for code splitting
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'))
@@ -154,6 +155,7 @@ export default function App() {
                         <Route path="/" element={<LandingPage />} />
                         <Route path="/register" element={<RegisterTenantPage />} />
                         <Route path="/auth/callback" element={<AuthCallbackPage />} />
+                        <Route path="/docs" element={<DocsPage />} />
 
                         {/* Tenant-scoped pages — slug resolves the active tenant */}
                         <Route path="/:slug/*" element={

@@ -426,6 +426,10 @@ export default function LandingPage() {
                     <a href="https://wa.me/6285771640544" target="_blank" rel="noopener noreferrer" className="text-[#ff8c00] hover:underline font-medium">
                         Hubungi Kami via WhatsApp
                     </a>
+                    <span className="mx-2 text-slate-300">|</span>
+                    <a href="/docs" className="text-slate-500 hover:text-[#ff8c00] transition-colors font-medium">
+                        Dokumentasi Platform
+                    </a>
                 </p>
             </footer>
 
