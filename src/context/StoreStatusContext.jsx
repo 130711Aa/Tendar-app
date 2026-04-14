@@ -18,10 +18,16 @@ export function StoreStatusProvider({ children }) {
                     .from('store_settings')
                     .select('is_open')
                     .eq('tenant_id', tenantId)
-                    .single()
+                    .maybeSingle()
 
                 if (error) throw error
-                if (data) setIsStoreOpen(data.is_open)
+                if (data) {
+                    setIsStoreOpen(data.is_open)
+                } else {
+                    // No store_settings row yet — create default
+                    await supabase.from('store_settings').insert({ tenant_id: tenantId, is_open: true }).select().maybeSingle()
+                    setIsStoreOpen(true)
+                }
             } catch (err) {
                 console.warn('Could not fetch store status:', err)
                 setIsStoreOpen(true)
