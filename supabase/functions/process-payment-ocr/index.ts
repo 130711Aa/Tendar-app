@@ -7,10 +7,10 @@ const corsHeaders = {
 
 // ============================================================
 // QRIS Config — from Supabase Edge Function secrets
-// Set with: supabase secrets set QRIS_NMID=ID1025424801849
+// Set with: supabase secrets set QRIS_NMID=ID1026505497952
 // ============================================================
-const QRIS_NMID          = Deno.env.get("QRIS_NMID")          ?? "ID1025424801849";
-const QRIS_MERCHANT_NAME = Deno.env.get("QRIS_MERCHANT_NAME") ?? "KAREEEM JUICE";
+const QRIS_NMID          = Deno.env.get("QRIS_NMID")          ?? "ID1026505497952";
+const QRIS_MERCHANT_NAME = Deno.env.get("QRIS_MERCHANT_NAME") ?? "Tendar Payment";
 const GOOGLE_VISION_KEY  = Deno.env.get("GOOGLE_VISION_API_KEY") ?? "";
 
 // ============================================================

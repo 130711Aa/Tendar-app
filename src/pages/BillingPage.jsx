@@ -1,296 +1,579 @@
-import { useState, useEffect } from 'react'
-import { supabase } from '../lib/supabase'
-import { useTenantContext } from '../context/TenantContext'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { toast } from 'react-hot-toast'
+import { useTenantContext } from '../context/TenantContext'
+import { createInvoice, uploadReceiptAndProcess, formatIDR, getActiveInvoice } from '../lib/billing'
+import { supabase } from '../lib/supabase'
 
+// ── Plan definitions ──────────────────────────────────────────────────
+const PLANS = [
+  {
+    id: 'free',
+    name: 'Free',
+    price: 0,
+    color: 'border-slate-200',
+    badge: null,
+    features: ['Hingga 10 produk', '1 Akses Staff', 'Online Menu'],
+  },
+  {
+    id: 'starter',
+    name: 'Starter',
+    price: 25000,
+    color: 'border-orange-300',
+    badge: null,
+    features: ['Hingga 30 produk', 'Kategori & Gambar Produk', 'Online Menu'],
+  },
+  {
+    id: 'business',
+    name: 'Business',
+    price: 50000,
+    color: 'border-[#ff8c00]/60',
+    badge: 'Terpopuler',
+    features: ['Produk tak terbatas', '2 Akses Staff', 'Kasir (POS)', 'Manajemen Stok & Analitik', 'Export CSV'],
+  },
+  {
+    id: 'pro',
+    name: 'Pro',
+    price: 100000,
+    color: 'border-[#ff8c00]',
+    badge: 'Lengkap',
+    features: ['Resep (BoM)', 'Staff tak terbatas', 'Export Excel', 'Prioritas Support'],
+  },
+]
+
+// ── Helpers ───────────────────────────────────────────────────────────
 function getDaysRemaining(expiresAt) {
-    if (!expiresAt) return null
-    const now = new Date()
-    const exp = new Date(expiresAt)
-    const diff = Math.ceil((exp - now) / (1000 * 60 * 60 * 24))
-    return diff
+  if (!expiresAt) return null
+  return Math.ceil((new Date(expiresAt) - new Date()) / (1000 * 60 * 60 * 24))
 }
 
+function useCountdown(deadline) {
+  const [remaining, setRemaining] = useState(null)
+  useEffect(() => {
+    if (!deadline) return
+    const tick = () => {
+      const diff = new Date(deadline) - new Date()
+      setRemaining(diff > 0 ? diff : 0)
+    }
+    tick()
+    const id = setInterval(tick, 1000)
+    return () => clearInterval(id)
+  }, [deadline])
+
+  if (remaining === null) return null
+  const h = Math.floor(remaining / 3600000)
+  const m = Math.floor((remaining % 3600000) / 60000)
+  const s = Math.floor((remaining % 60000) / 1000)
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+}
+
+// ── Subscription timer ────────────────────────────────────────────────
 function SubscriptionTimer({ expiresAt, plan }) {
-    const days = getDaysRemaining(expiresAt)
+  const days = getDaysRemaining(expiresAt)
+  if (plan === 'free' || !expiresAt) return null
 
-    if (plan === 'free') return null
-    if (!expiresAt) {
-        return (
-            <div className="flex items-center gap-2 bg-orange-50 text-orange-700 px-4 py-2 rounded-xl border border-orange-100 text-sm font-medium">
-                <span className="material-symbols-outlined text-[18px]">info</span>
-                <span>Durasi langganan belum tersedia</span>
-            </div>
-        )
-    }
+  const isExpired = days !== null && days <= 0
+  const isExpiringSoon = days !== null && days <= 7 && !isExpired
+  const color = isExpired
+    ? 'bg-red-50 border-red-200 text-red-700'
+    : isExpiringSoon
+    ? 'bg-amber-50 border-amber-200 text-amber-700'
+    : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+  const icon = isExpired ? 'warning' : isExpiringSoon ? 'alarm' : 'calendar_month'
+  const expiryDate = new Date(expiresAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
 
-    const isExpiringSoon = days !== null && days <= 7
-    const isExpired = days !== null && days <= 0
-
-    const color = isExpired
-        ? 'bg-red-50 border-red-200 text-red-700'
-        : isExpiringSoon
-        ? 'bg-amber-50 border-amber-200 text-amber-700'
-        : 'bg-emerald-50 border-emerald-200 text-emerald-700'
-
-    const icon = isExpired ? 'warning' : isExpiringSoon ? 'alarm' : 'calendar_month'
-
-    const expiryDate = new Date(expiresAt).toLocaleDateString('id-ID', {
-        day: 'numeric', month: 'long', year: 'numeric'
-    })
-
-    return (
-        <div className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-medium ${color}`}>
-            <span className="material-symbols-outlined text-[18px]">{icon}</span>
-            {isExpired ? (
-                <span>Langganan <strong>sudah berakhir</strong> — segera perbarui!</span>
-            ) : (
-                <span>
-                    Aktif hingga <strong>{expiryDate}</strong>
-                    {' '}·{' '}
-                    <span className="font-extrabold">{days} hari lagi</span>
-                </span>
-            )}
-        </div>
-    )
+  return (
+    <div className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-medium ${color}`}>
+      <span className="material-symbols-outlined text-[18px]">{icon}</span>
+      {isExpired ? (
+        <span>Langganan <strong>sudah berakhir</strong> — segera perbarui!</span>
+      ) : (
+        <span>Aktif hingga <strong>{expiryDate}</strong> · <span className="font-extrabold">{days} hari lagi</span></span>
+      )}
+    </div>
+  )
 }
 
-export default function BillingPage() {
-    const { tenantId, tenantName, tenantPlan, slug } = useTenantContext()
-    const [loading, setLoading] = useState(false)
-    const [planExpiresAt, setPlanExpiresAt] = useState(null)
-    const [fetchingExpiry, setFetchingExpiry] = useState(true)
+// ── QRIS Payment Modal ────────────────────────────────────────────────
+function QRISModal({ invoice, planName, onClose, onSuccess, tenantId }) {
+  const countdown = useCountdown(invoice?.deadline)
+  const [uploadStep, setUploadStep] = useState('idle') // idle | uploading | processing | done | error
+  const [resultMsg, setResultMsg] = useState('')
+  const [resultStatus, setResultStatus] = useState(null) // 'valid' | 'review_needed' | 'rejected'
+  const [dragOver, setDragOver] = useState(false)
+  const fileRef = useRef()
 
-    // Fetch plan_expires_at from tenants table
-    useEffect(() => {
-        if (!tenantId) return
-        setFetchingExpiry(true)
-        supabase
-            .from('tenants')
-            .select('plan_expires_at')
-            .eq('id', tenantId)
-            .single()
-            .then(({ data }) => {
-                if (data) setPlanExpiresAt(data.plan_expires_at)
-            })
-            .finally(() => setFetchingExpiry(false))
-    }, [tenantId])
-
-    // Load Midtrans Snap script on mount
-    useEffect(() => {
-        const script = document.createElement('script')
-        script.src = 'https://app.sandbox.midtrans.com/snap/snap.js'
-        script.setAttribute('data-client-key', 'Mid-client-_nzDGe7-el4-NvES')
-        script.async = true
-        document.body.appendChild(script)
-        return () => { document.body.removeChild(script) }
-    }, [])
-
-    const handleUpgrade = async (planName, priceStr) => {
-        if (tenantPlan === planName) {
-            toast.error(`Anda sudah berlangganan paket ${planName.toUpperCase()}`)
-            return
-        }
-        setLoading(true)
-        const tid = toast.loading('Memproses pembayaran...')
-        try {
-            const { data, error } = await supabase.functions.invoke('create-midtrans-transaction', {
-                body: { plan: planName, tenant_id: tenantId, tenant_name: tenantName }
-            })
-            if (error) throw new Error(error.message || 'Gagal terhubung ke server pembayaran')
-            if (data?.error) throw new Error(data.error)
-            const token = data.token
-            if (!token) throw new Error('Token pembayaran tidak diterima')
-            toast.dismiss(tid)
-
-            window.snap.pay(token, {
-                onSuccess: async function (result) {
-                    toast.loading('Memperbarui paket langganan...', { id: 'update-plan' })
-
-                    // Calculate new expiry: 30 days from now
-                    const newExpiry = new Date()
-                    newExpiry.setDate(newExpiry.getDate() + 30)
-
-                    const { error: updateError } = await supabase
-                        .from('tenants')
-                        .update({
-                            plan: planName,
-                            plan_expires_at: newExpiry.toISOString()
-                        })
-                        .eq('id', tenantId)
-
-                    if (updateError) {
-                        toast.error('Gagal memperbarui paket: ' + updateError.message, { id: 'update-plan' })
-                    } else {
-                        toast.success('Berhasil upgrade paket! Silakan refresh halaman.', { id: 'update-plan' })
-                        setTimeout(() => window.location.reload(), 2000)
-                    }
-                },
-                onPending: function () { toast('Selesaikan pembayaran Anda segera.') },
-                onError: function () { toast.error('Pembayaran gagal atau dibatalkan.') },
-                onClose: function () { setLoading(false) }
-            })
-        } catch (err) {
-            console.error(err)
-            toast.error(err.message || 'Terjadi kesalahan sistem', { id: tid })
-            setLoading(false)
-        }
+  const handleFile = useCallback(async (file) => {
+    if (!file) return
+    const allowed = ['image/jpeg', 'image/png', 'image/webp']
+    if (!allowed.includes(file.type)) {
+      toast.error('Format file harus JPG, PNG, atau WebP')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Ukuran file maksimal 5MB')
+      return
     }
 
-    const plans = [
-        { id: 'free', name: 'Free', price: '0', color: 'border-slate-200', badge: null, features: ['Hingga 10 produk', '1 Akses Staff', 'Online Menu'] },
-        { id: 'starter', name: 'Starter', price: '25.000', color: 'border-orange-300', badge: null, features: ['Hingga 30 produk', 'Kategori & Gambar Produk', 'Online Menu'] },
-        { id: 'business', name: 'Business', price: '50.000', color: 'border-[#ff8c00]/60', badge: 'Terpopuler', features: ['Produk tak terbatas', '2 Akses Staff', 'Kasir (POS)', 'Manajemen Stok & Analitik', 'Export CSV'] },
-        { id: 'pro', name: 'Pro', price: '100.000', color: 'border-[#ff8c00]', badge: 'Lengkap', features: ['Resep (BoM)', 'Staff tak terbatas', 'Export Excel', 'Prioritas Support'] },
-    ]
+    setUploadStep('uploading')
+    try {
+      const result = await uploadReceiptAndProcess(invoice.id, tenantId, file)
+      setResultStatus(result.status)
+      setResultMsg(result.message)
+      setUploadStep('done')
 
-    const days = getDaysRemaining(planExpiresAt)
-    const isExpired = days !== null && days <= 0
-    const isExpiringSoon = days !== null && days <= 7 && !isExpired
+      if (result.status === 'valid') {
+        toast.success('Pembayaran terverifikasi! 🎉')
+        setTimeout(() => { onSuccess(); onClose() }, 2500)
+      } else if (result.status === 'review_needed') {
+        toast('Sedang ditinjau tim Tendar. Kami akan konfirmasi dalam 1×24 jam.', { icon: '⏳' })
+      } else {
+        toast.error('Bukti tidak valid. Coba upload ulang.')
+        setUploadStep('idle')
+      }
+    } catch (err) {
+      setResultStatus('rejected')
+      setResultMsg(err.message || 'Gagal memproses bukti pembayaran')
+      setUploadStep('error')
+      toast.error(err.message || 'Terjadi kesalahan')
+    }
+  }, [invoice, tenantId, onClose, onSuccess])
 
-    return (
-        <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-6 animate-fade-in">
-            {/* Header Card */}
-            <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
-                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                    <div>
-                        <h1 className="text-2xl font-bold text-slate-800">Langganan & Billing</h1>
-                        <p className="text-slate-500 text-sm mt-1">Kelola paket berlangganan untuk toko <strong>{tenantName}</strong></p>
-                    </div>
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 flex-wrap">
-                        {/* Active plan badge */}
-                        <div className="bg-orange-50 text-orange-600 px-4 py-2 rounded-xl border border-orange-100 flex items-center gap-2">
-                            <span className="material-symbols-outlined text-[18px]">stars</span>
-                            <span className="text-sm font-semibold">Paket Aktif: <span className="uppercase font-black">{tenantPlan}</span></span>
-                        </div>
-                        {/* Expiry timer */}
-                        {!fetchingExpiry && (
-                            <SubscriptionTimer expiresAt={planExpiresAt} plan={tenantPlan} />
-                        )}
-                    </div>
-                </div>
+  const onFileChange = (e) => handleFile(e.target.files?.[0])
+  const onDrop = (e) => {
+    e.preventDefault()
+    setDragOver(false)
+    handleFile(e.dataTransfer.files?.[0])
+  }
 
-                {/* Expiry warning bar */}
-                {isExpired && (
-                    <div className="mt-4 bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-center gap-3 text-red-700 text-sm">
-                        <span className="material-symbols-outlined text-red-500">warning</span>
-                        <p><strong>Langganan Anda sudah berakhir.</strong> Fitur premium tidak aktif. Perbarui sekarang untuk melanjutkan akses.</p>
-                    </div>
-                )}
-                {isExpiringSoon && !isExpired && (
-                    <div className="mt-4 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-center gap-3 text-amber-700 text-sm">
-                        <span className="material-symbols-outlined text-amber-500">alarm</span>
-                        <p><strong>Langganan hampir habis!</strong> Hanya tersisa {days} hari. Perbarui sekarang agar tidak terinterupsi.</p>
-                    </div>
-                )}
+  const isExpired = countdown === '00:00:00'
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in">
+        {/* Header */}
+        <div className="bg-gradient-to-br from-[#ff8c00] to-orange-500 p-6 text-white">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-orange-100 text-sm font-medium mb-1">Bayar via QRIS</p>
+              <h2 className="text-2xl font-black">Paket {planName}</h2>
             </div>
+            <button
+              onClick={onClose}
+              className="text-orange-100 hover:text-white transition-colors p-1"
+              aria-label="Tutup"
+            >
+              <span className="material-symbols-outlined text-[28px]">close</span>
+            </button>
+          </div>
 
-            {/* Subscription Duration Card (if active paid plan) */}
-            {tenantPlan !== 'free' && planExpiresAt && !fetchingExpiry && (
-                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-                    <h2 className="text-base font-bold text-slate-700 mb-4 flex items-center gap-2">
-                        <span className="material-symbols-outlined text-[#ff8c00] text-[20px]">schedule</span>
-                        Durasi Langganan
-                    </h2>
-                    <div className="flex flex-wrap gap-4">
-                        {/* Progress bar */}
-                        {(() => {
-                            const totalDays = 30
-                            const pct = Math.max(0, Math.min(100, Math.round((days / totalDays) * 100)))
-                            const barColor = isExpired ? 'bg-red-400' : isExpiringSoon ? 'bg-amber-400' : 'bg-emerald-400'
-                            return (
-                                <div className="flex-1 min-w-[220px]">
-                                    <div className="flex justify-between text-xs font-medium text-slate-500 mb-2">
-                                        <span>Sisa waktu</span>
-                                        <span className="font-bold text-slate-700">{Math.max(0, days)} / {totalDays} hari</span>
-                                    </div>
-                                    <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
-                                        <div
-                                            className={`h-full rounded-full transition-all ${barColor}`}
-                                            style={{ width: `${pct}%` }}
-                                        />
-                                    </div>
-                                    <div className="flex justify-between text-[10px] text-slate-400 mt-1">
-                                        <span>Berakhir: {new Date(planExpiresAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                                        <span>{pct}% tersisa</span>
-                                    </div>
-                                </div>
-                            )
-                        })()}
-
-                        {/* Stats */}
-                        <div className="flex gap-4">
-                            <div className="text-center">
-                                <p className={`text-3xl font-black ${isExpired ? 'text-red-500' : isExpiringSoon ? 'text-amber-500' : 'text-emerald-500'}`}>
-                                    {Math.max(0, days)}
-                                </p>
-                                <p className="text-xs text-slate-500 font-medium">Hari Tersisa</p>
-                            </div>
-                            <div className="text-center">
-                                <p className="text-3xl font-black text-slate-400">{Math.max(0, 30 - days)}</p>
-                                <p className="text-xs text-slate-500 font-medium">Hari Berjalan</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Plan cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {plans.map(p => (
-                    <div key={p.id} className={`relative bg-white border-2 ${p.color} ${tenantPlan === p.id ? 'bg-orange-50/40 ring-2 ring-[#ff8c00]/30' : ''} p-5 rounded-3xl flex flex-col shadow-sm hover:shadow-md transition-shadow`}>
-                        {tenantPlan === p.id && (
-                            <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-emerald-500 text-white text-[10px] px-3 py-1 rounded-full font-black tracking-widest flex items-center gap-1 shadow-sm">
-                                PAKET AKTIF
-                            </span>
-                        )}
-                        {p.badge && tenantPlan !== p.id && (
-                            <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#ff8c00] text-white text-[10px] px-3 py-1 rounded-full font-black tracking-widest shadow-sm">
-                                {p.badge}
-                            </span>
-                        )}
-                        <h3 className="font-bold text-slate-700 text-lg">{p.name}</h3>
-                        <p className="mt-1 border-b border-slate-100 pb-4">
-                            <span className="text-3xl font-extrabold text-[#181510] tracking-tight">Rp{p.price}</span>
-                            <span className="text-slate-400 text-sm font-medium">/bln</span>
-                        </p>
-
-                        <ul className="mt-4 mb-6 space-y-3 flex-1">
-                            {p.features.map((f, i) => (
-                                <li key={i} className="flex gap-2 text-sm text-slate-600 font-medium">
-                                    <span className="material-symbols-outlined text-emerald-500 text-[18px]">check_circle</span>
-                                    <span className="leading-tight pt-0.5">{f}</span>
-                                </li>
-                            ))}
-                        </ul>
-
-                        {p.id !== 'free' && tenantPlan !== p.id && (
-                            <button
-                                onClick={() => handleUpgrade(p.id, p.price)}
-                                disabled={loading}
-                                className="w-full bg-[#ff8c00] disabled:bg-slate-300 text-white py-3 rounded-xl font-bold hover:bg-[#e07800] transition-colors flex justify-center items-center gap-2 shadow-lg shadow-[#ff8c00]/20 active:scale-[0.98]"
-                            >
-                                {loading ? 'Mohon tunggu...' : `Pilih ${p.name}`}
-                            </button>
-                        )}
-                        {p.id === 'free' && tenantPlan !== p.id && (
-                            <button disabled className="w-full bg-slate-50 text-slate-400 py-3 rounded-xl font-bold cursor-not-allowed border border-slate-200">
-                                Downgrade via CS
-                            </button>
-                        )}
-                        {tenantPlan === p.id && (
-                            <button disabled className="w-full bg-emerald-50 text-emerald-600 border border-emerald-200 py-3 rounded-xl font-bold cursor-not-allowed">
-                                Sedang Digunakan
-                            </button>
-                        )}
-                    </div>
-                ))}
-            </div>
-
-            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex gap-3 text-blue-700 text-sm mt-4">
-                <span className="material-symbols-outlined text-blue-500">info</span>
-                <p><strong>Mode Sandbox:</strong> Pembayaran saat ini menggunakan mode percobaan (Sandbox). Gunakan simulasi pembayaran Midtrans untuk menyelesaikannya.</p>
-            </div>
+          {/* Amount */}
+          <div className="mt-4 bg-white/20 rounded-2xl px-5 py-4">
+            <p className="text-orange-100 text-sm">Transfer tepat sebesar</p>
+            <p className="text-4xl font-black tracking-tight mt-1">
+              {formatIDR(invoice.total_amount)}
+            </p>
+            <p className="text-orange-200 text-xs mt-1">
+              (termasuk kode unik <strong className="text-white">+{invoice.unique_code}</strong> untuk verifikasi otomatis)
+            </p>
+          </div>
         </div>
-    )
+
+        {/* Body */}
+        <div className="p-6 space-y-5">
+          {/* Timer */}
+          <div className={`flex items-center justify-between px-4 py-2.5 rounded-xl border text-sm font-semibold ${
+            isExpired ? 'bg-red-50 border-red-200 text-red-600' : 'bg-amber-50 border-amber-200 text-amber-700'
+          }`}>
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-[18px]">timer</span>
+              <span>Berlaku hingga</span>
+            </div>
+            <span className="font-mono text-base">{countdown ?? '--:--:--'}</span>
+          </div>
+
+          {/* QRIS Image */}
+          <div className="flex flex-col items-center">
+            <p className="text-xs text-slate-400 mb-2 font-medium">Scan QR Code di bawah ini</p>
+            <div className="w-52 h-52 rounded-2xl border-2 border-slate-200 overflow-hidden bg-slate-50 flex items-center justify-center">
+              <img
+                src="/QRIS Tendar Payment.jpeg"
+                alt="QRIS Tendar"
+                className="w-full h-full object-contain"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none'
+                  e.currentTarget.nextElementSibling.style.display = 'flex'
+                }}
+              />
+              <div
+                className="hidden w-full h-full items-center justify-center flex-col gap-2 text-slate-400 text-center p-4"
+              >
+                <span className="material-symbols-outlined text-[40px]">qr_code_2</span>
+                <p className="text-xs">Letakkan file <code className="font-mono bg-slate-100 px-1 rounded">QRIS Tendar Payment.jpeg</code> di folder <code className="font-mono bg-slate-100 px-1 rounded">public/</code></p>
+              </div>
+            </div>
+            <p className="mt-2 text-[10px] text-slate-400">
+              NMID: <span className="font-mono font-bold">ID1026505497952</span> · Tendar Payment · GoPay
+            </p>
+          </div>
+
+          {/* Divider */}
+          <div className="flex items-center gap-3 text-slate-300">
+            <div className="flex-1 h-px bg-slate-100" />
+            <span className="text-xs font-medium text-slate-400">Sudah bayar?</span>
+            <div className="flex-1 h-px bg-slate-100" />
+          </div>
+
+          {/* Upload area */}
+          {uploadStep === 'idle' && !isExpired && (
+            <div>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={onFileChange}
+              />
+              <div
+                onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={onDrop}
+                onClick={() => fileRef.current?.click()}
+                className={`border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all ${
+                  dragOver
+                    ? 'border-[#ff8c00] bg-orange-50'
+                    : 'border-slate-200 hover:border-[#ff8c00]/50 hover:bg-orange-50/30'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[36px] text-slate-400">upload</span>
+                <p className="text-sm font-semibold text-slate-600 mt-2">Upload Bukti Pembayaran</p>
+                <p className="text-xs text-slate-400 mt-1">Drag & drop atau klik · JPG, PNG, WebP · Maks 5MB</p>
+              </div>
+            </div>
+          )}
+
+          {uploadStep === 'uploading' && (
+            <div className="flex flex-col items-center gap-3 py-4">
+              <div className="w-10 h-10 border-4 border-[#ff8c00]/20 border-t-[#ff8c00] rounded-full animate-spin" />
+              <p className="text-sm font-medium text-slate-600">Mengupload bukti pembayaran...</p>
+            </div>
+          )}
+
+          {uploadStep === 'processing' && (
+            <div className="flex flex-col items-center gap-3 py-4">
+              <div className="w-10 h-10 border-4 border-blue-200 border-t-blue-500 rounded-full animate-spin" />
+              <p className="text-sm font-medium text-slate-600">Memverifikasi dengan OCR...</p>
+              <p className="text-xs text-slate-400">Ini mungkin memerlukan waktu beberapa detik</p>
+            </div>
+          )}
+
+          {uploadStep === 'done' && resultStatus === 'valid' && (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-start gap-3">
+              <span className="material-symbols-outlined text-emerald-500 text-[28px] mt-0.5">check_circle</span>
+              <div>
+                <p className="font-bold text-emerald-700 text-sm">Pembayaran Terverifikasi!</p>
+                <p className="text-xs text-emerald-600 mt-1">{resultMsg}</p>
+              </div>
+            </div>
+          )}
+
+          {uploadStep === 'done' && resultStatus === 'review_needed' && (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
+              <span className="material-symbols-outlined text-amber-500 text-[28px] mt-0.5">pending</span>
+              <div>
+                <p className="font-bold text-amber-700 text-sm">Sedang Ditinjau</p>
+                <p className="text-xs text-amber-600 mt-1">{resultMsg}</p>
+              </div>
+            </div>
+          )}
+
+          {uploadStep === 'error' && (
+            <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-start gap-3">
+              <span className="material-symbols-outlined text-red-500 text-[28px] mt-0.5">error</span>
+              <div>
+                <p className="font-bold text-red-700 text-sm">Verifikasi Gagal</p>
+                <p className="text-xs text-red-600 mt-1">{resultMsg}</p>
+                <button
+                  onClick={() => { setUploadStep('idle'); setResultMsg(''); setResultStatus(null) }}
+                  className="mt-2 text-xs font-semibold text-red-600 underline"
+                >
+                  Coba upload ulang
+                </button>
+              </div>
+            </div>
+          )}
+
+          {isExpired && (
+            <div className="bg-red-50 border border-red-200 rounded-2xl p-4 text-red-700 text-sm text-center">
+              <span className="material-symbols-outlined text-[24px] block mb-1">timer_off</span>
+              Invoice sudah kadaluarsa. Tutup dan buat invoice baru.
+            </div>
+          )}
+
+          {/* Info */}
+          <p className="text-[11px] text-slate-400 text-center leading-relaxed">
+            Pembayaran diverifikasi otomatis via Google Cloud Vision OCR.
+            Jika ada kendala, hubungi CS Tendar dengan ID invoice: <span className="font-mono font-bold">{invoice.id.slice(0, 8).toUpperCase()}</span>
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Main BillingPage ──────────────────────────────────────────────────
+export default function BillingPage() {
+  const { tenantId, tenantName, tenantPlan, slug } = useTenantContext()
+  const [planExpiresAt, setPlanExpiresAt] = useState(null)
+  const [fetchingExpiry, setFetchingExpiry] = useState(true)
+  const [loadingPlan, setLoadingPlan] = useState(null) // which plan is loading
+  const [activeInvoice, setActiveInvoice] = useState(null)
+  const [selectedPlan, setSelectedPlan] = useState(null)
+  const [showModal, setShowModal] = useState(false)
+
+  // Fetch expiry
+  useEffect(() => {
+    if (!tenantId) return
+    setFetchingExpiry(true)
+    supabase
+      .from('tenants')
+      .select('plan_expires_at')
+      .eq('id', tenantId)
+      .single()
+      .then(({ data }) => { if (data) setPlanExpiresAt(data.plan_expires_at) })
+      .finally(() => setFetchingExpiry(false))
+  }, [tenantId])
+
+  const days = getDaysRemaining(planExpiresAt)
+  const isExpired = days !== null && days <= 0
+  const isExpiringSoon = days !== null && days <= 7 && !isExpired
+
+  const handleSelectPlan = async (plan) => {
+    if (tenantPlan === plan.id) {
+      toast.error(`Anda sudah berlangganan paket ${plan.name}`)
+      return
+    }
+
+    setLoadingPlan(plan.id)
+    const tid = toast.loading('Membuat invoice...')
+
+    try {
+      // Check if there's already an active invoice for this plan
+      let invoice = await getActiveInvoice(tenantId, plan.id)
+
+      if (!invoice) {
+        invoice = await createInvoice(tenantId, plan.id)
+      }
+
+      toast.dismiss(tid)
+      setActiveInvoice(invoice)
+      setSelectedPlan(plan)
+      setShowModal(true)
+    } catch (err) {
+      toast.error(err.message || 'Gagal membuat invoice', { id: tid })
+    } finally {
+      setLoadingPlan(null)
+    }
+  }
+
+  const handlePaymentSuccess = () => {
+    setTimeout(() => window.location.reload(), 1500)
+  }
+
+  return (
+    <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-6 animate-fade-in">
+      {/* Header Card */}
+      <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-800">Langganan & Billing</h1>
+            <p className="text-slate-500 text-sm mt-1">
+              Kelola paket berlangganan untuk toko <strong>{tenantName}</strong>
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 flex-wrap">
+            <div className="bg-orange-50 text-orange-600 px-4 py-2 rounded-xl border border-orange-100 flex items-center gap-2">
+              <span className="material-symbols-outlined text-[18px]">stars</span>
+              <span className="text-sm font-semibold">
+                Paket Aktif: <span className="uppercase font-black">{tenantPlan}</span>
+              </span>
+            </div>
+            {!fetchingExpiry && <SubscriptionTimer expiresAt={planExpiresAt} plan={tenantPlan} />}
+          </div>
+        </div>
+
+        {isExpired && (
+          <div className="mt-4 bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-center gap-3 text-red-700 text-sm">
+            <span className="material-symbols-outlined text-red-500">warning</span>
+            <p><strong>Langganan Anda sudah berakhir.</strong> Fitur premium tidak aktif. Perbarui sekarang.</p>
+          </div>
+        )}
+        {isExpiringSoon && !isExpired && (
+          <div className="mt-4 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-center gap-3 text-amber-700 text-sm">
+            <span className="material-symbols-outlined text-amber-500">alarm</span>
+            <p><strong>Langganan hampir habis!</strong> Hanya tersisa {days} hari.</p>
+          </div>
+        )}
+      </div>
+
+      {/* Subscription duration */}
+      {tenantPlan !== 'free' && planExpiresAt && !fetchingExpiry && (
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+          <h2 className="text-base font-bold text-slate-700 mb-4 flex items-center gap-2">
+            <span className="material-symbols-outlined text-[#ff8c00] text-[20px]">schedule</span>
+            Durasi Langganan
+          </h2>
+          {(() => {
+            const totalDays = 30
+            const pct = Math.max(0, Math.min(100, Math.round((days / totalDays) * 100)))
+            const bar = isExpired ? 'bg-red-400' : isExpiringSoon ? 'bg-amber-400' : 'bg-emerald-400'
+            return (
+              <div className="flex flex-wrap gap-4">
+                <div className="flex-1 min-w-[220px]">
+                  <div className="flex justify-between text-xs font-medium text-slate-500 mb-2">
+                    <span>Sisa waktu</span>
+                    <span className="font-bold text-slate-700">{Math.max(0, days)} / {totalDays} hari</span>
+                  </div>
+                  <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full transition-all ${bar}`} style={{ width: `${pct}%` }} />
+                  </div>
+                  <div className="flex justify-between text-[10px] text-slate-400 mt-1">
+                    <span>Berakhir: {new Date(planExpiresAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                    <span>{pct}% tersisa</span>
+                  </div>
+                </div>
+                <div className="flex gap-4">
+                  <div className="text-center">
+                    <p className={`text-3xl font-black ${isExpired ? 'text-red-500' : isExpiringSoon ? 'text-amber-500' : 'text-emerald-500'}`}>
+                      {Math.max(0, days)}
+                    </p>
+                    <p className="text-xs text-slate-500 font-medium">Hari Tersisa</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-3xl font-black text-slate-400">{Math.max(0, 30 - days)}</p>
+                    <p className="text-xs text-slate-500 font-medium">Hari Berjalan</p>
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
+        </div>
+      )}
+
+      {/* Plan cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {PLANS.map(p => (
+          <div
+            key={p.id}
+            className={`relative bg-white border-2 ${p.color} ${tenantPlan === p.id ? 'bg-orange-50/40 ring-2 ring-[#ff8c00]/30' : ''} p-5 rounded-3xl flex flex-col shadow-sm hover:shadow-md transition-shadow`}
+          >
+            {tenantPlan === p.id && (
+              <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-emerald-500 text-white text-[10px] px-3 py-1 rounded-full font-black tracking-widest shadow-sm">
+                PAKET AKTIF
+              </span>
+            )}
+            {p.badge && tenantPlan !== p.id && (
+              <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#ff8c00] text-white text-[10px] px-3 py-1 rounded-full font-black tracking-widest shadow-sm">
+                {p.badge}
+              </span>
+            )}
+            <h3 className="font-bold text-slate-700 text-lg">{p.name}</h3>
+            <p className="mt-1 border-b border-slate-100 pb-4">
+              <span className="text-3xl font-extrabold text-[#181510] tracking-tight">
+                {p.price === 0 ? 'Gratis' : formatIDR(p.price)}
+              </span>
+              {p.price > 0 && <span className="text-slate-400 text-sm font-medium">/bln</span>}
+            </p>
+            <ul className="mt-4 mb-6 space-y-3 flex-1">
+              {p.features.map((f, i) => (
+                <li key={i} className="flex gap-2 text-sm text-slate-600 font-medium">
+                  <span className="material-symbols-outlined text-emerald-500 text-[18px]">check_circle</span>
+                  <span className="leading-tight pt-0.5">{f}</span>
+                </li>
+              ))}
+            </ul>
+
+            {/* CTA Button */}
+            {p.id !== 'free' && tenantPlan !== p.id && (
+              <button
+                onClick={() => handleSelectPlan(p)}
+                disabled={loadingPlan !== null}
+                className="w-full bg-[#ff8c00] disabled:bg-slate-300 text-white py-3 rounded-xl font-bold hover:bg-[#e07800] transition-colors flex justify-center items-center gap-2 shadow-lg shadow-[#ff8c00]/20 active:scale-[0.98]"
+              >
+                {loadingPlan === p.id ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                    Memuat...
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-[18px]">qr_code_2</span>
+                    Bayar via QRIS
+                  </>
+                )}
+              </button>
+            )}
+            {p.id === 'free' && tenantPlan !== p.id && (
+              <button disabled className="w-full bg-slate-50 text-slate-400 py-3 rounded-xl font-bold cursor-not-allowed border border-slate-200">
+                Downgrade via CS
+              </button>
+            )}
+            {tenantPlan === p.id && (
+              <button disabled className="w-full bg-emerald-50 text-emerald-600 border border-emerald-200 py-3 rounded-xl font-bold cursor-not-allowed">
+                Sedang Digunakan
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* How it works */}
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+        <h2 className="text-base font-bold text-slate-700 mb-4 flex items-center gap-2">
+          <span className="material-symbols-outlined text-[#ff8c00] text-[20px]">help_outline</span>
+          Cara Pembayaran via QRIS
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+          {[
+            { icon: 'touch_app', title: 'Pilih Paket', desc: 'Klik "Bayar via QRIS" pada paket yang diinginkan' },
+            { icon: 'qr_code_scanner', title: 'Scan QR', desc: 'Scan QR Code menggunakan GoPay, OVO, Dana, BRImo, atau app bank lainnya' },
+            { icon: 'paid', title: 'Transfer Tepat', desc: 'Pastikan nominal transfer sesuai, termasuk kode unik 3 digit' },
+            { icon: 'upload', title: 'Upload Bukti', desc: 'Upload screenshot bukti pembayaran untuk verifikasi otomatis via OCR' },
+          ].map((step, i) => (
+            <div key={i} className="flex gap-3 p-3 bg-slate-50 rounded-xl">
+              <div className="flex-shrink-0 w-8 h-8 bg-[#ff8c00]/10 rounded-lg flex items-center justify-center">
+                <span className="material-symbols-outlined text-[#ff8c00] text-[18px]">{step.icon}</span>
+              </div>
+              <div>
+                <p className="text-xs font-bold text-slate-700">{step.title}</p>
+                <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{step.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Info banner */}
+      <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex gap-3 text-blue-700 text-sm">
+        <span className="material-symbols-outlined text-blue-500 flex-shrink-0">info</span>
+        <p>
+          Pembayaran diverifikasi otomatis oleh sistem OCR Tendar menggunakan Google Cloud Vision.
+          Untuk bantuan, hubungi admin Tendar dengan menyebutkan <strong>ID Invoice</strong> Anda.
+        </p>
+      </div>
+
+      {/* QRIS Modal */}
+      {showModal && activeInvoice && selectedPlan && (
+        <QRISModal
+          invoice={activeInvoice}
+          planName={selectedPlan.name}
+          tenantId={tenantId}
+          onClose={() => setShowModal(false)}
+          onSuccess={handlePaymentSuccess}
+        />
+      )}
+    </div>
+  )
 }
