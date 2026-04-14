@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import qrisImage from '/qrcode.jpeg'
+import qrisImage from '/QRIS Tendar Payment.jpeg'
 import { useProducts } from '../context/ProductsContext'
 import { useCategories } from '../context/CategoriesContext'
 import { useOrders } from '../context/OrdersContext'
