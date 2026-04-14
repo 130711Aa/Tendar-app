@@ -1,0 +1,536 @@
+[
+  {
+    "id": "TC001",
+    "title": "Place an order with quantity edits and table/note and see confirmation",
+    "description": "Verifies a customer can browse categories, add an item, modify quantity, add table/notes, submit the order, and see an order confirmation.",
+    "category": "Store Menu & Ordering (Customer)",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /:slug"
+      },
+      {
+        "type": "action",
+        "description": "Click a category to browse its products"
+      },
+      {
+        "type": "action",
+        "description": "Add a product to the cart"
+      },
+      {
+        "type": "action",
+        "description": "Open the cart"
+      },
+      {
+        "type": "action",
+        "description": "Increase the quantity for the cart item"
+      },
+      {
+        "type": "action",
+        "description": "Fill a table number into the table number field"
+      },
+      {
+        "type": "action",
+        "description": "Fill an order note into the order note field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the order"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an order confirmation is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the placed order summary is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC002",
+    "title": "Update an order through the full fulfillment lifecycle",
+    "description": "Verifies staff can view an active order, move it from pending to preparing to completed, and confirm it appears under the completed filter.",
+    "category": "Order Management (Staff/Admin)",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /{{TENANT_SLUG}}/admin/orders"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the active orders list to load"
+      },
+      {
+        "type": "action",
+        "description": "Select an order with status pending"
+      },
+      {
+        "type": "action",
+        "description": "Change the order status to preparing"
+      },
+      {
+        "type": "action",
+        "description": "Change the order status to completed"
+      },
+      {
+        "type": "action",
+        "description": "Filter orders by status to show completed orders only"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the updated order appears in the completed orders list"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC003",
+    "title": "Remove an item from cart, adjust remaining quantities, and submit order",
+    "description": "Verifies a customer can add multiple products, remove one, adjust quantities for remaining items, submit the order, and see confirmation.",
+    "category": "Store Menu & Ordering (Customer)",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /:slug"
+      },
+      {
+        "type": "action",
+        "description": "Add a product to the cart"
+      },
+      {
+        "type": "action",
+        "description": "Add a different product to the cart"
+      },
+      {
+        "type": "action",
+        "description": "Open the cart"
+      },
+      {
+        "type": "action",
+        "description": "Remove one cart item"
+      },
+      {
+        "type": "action",
+        "description": "Increase the quantity for the remaining cart item"
+      },
+      {
+        "type": "action",
+        "description": "Submit the order"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an order confirmation is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify only one item is included in the order summary"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC004",
+    "title": "Filter to pending orders and fulfill one end-to-end",
+    "description": "Verifies staff can use the pending filter to find a pending order and successfully complete it through preparing and completed states.",
+    "category": "Order Management (Staff/Admin)",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /{{TENANT_SLUG}}/admin/orders"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the active orders list to load"
+      },
+      {
+        "type": "action",
+        "description": "Filter orders by status to show pending orders only"
+      },
+      {
+        "type": "action",
+        "description": "Select a pending order from the filtered list"
+      },
+      {
+        "type": "action",
+        "description": "Update the order status to preparing"
+      },
+      {
+        "type": "action",
+        "description": "Update the order status to completed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the order is no longer listed under the pending filter"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC005",
+    "title": "Create a new tenant store with email/password and reach access instructions",
+    "description": "Verifies a merchant can register a new store with a unique slug and sees a success confirmation with access instructions for the new store.",
+    "category": "Global Tenant Registration",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /register"
+      },
+      {
+        "type": "action",
+        "description": "Fill a new store name into the store name field"
+      },
+      {
+        "type": "action",
+        "description": "Fill a new unique store slug into the store slug field"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid email into the admin email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid password into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the registration form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a success confirmation is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify access instructions for the new store are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC006",
+    "title": "View active orders list in the orders dashboard",
+    "description": "Verifies staff can open the orders dashboard and see a list of active orders displayed for operational triage.",
+    "category": "Order Management (Staff/Admin)",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /{{TENANT_SLUG}}/admin/orders"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the active orders list to load"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a list of active orders is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC007",
+    "title": "Sign in as an existing customer and return to the tenant menu",
+    "description": "Verifies a customer can log in within a store context and is redirected back to the tenant menu after successful sign-in.",
+    "category": "Customer Authentication (Store-scoped)",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /:slug/auth"
+      },
+      {
+        "type": "action",
+        "description": "Select the login mode"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid email into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid password into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a login success confirmation is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the user is redirected to the tenant menu"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC008",
+    "title": "Register a new customer account within a tenant and return to the menu",
+    "description": "Verifies a customer can create a new account in a specific store context and is redirected to the tenant menu after successful registration.",
+    "category": "Customer Authentication (Store-scoped)",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /:slug/auth"
+      },
+      {
+        "type": "action",
+        "description": "Select the registration mode"
+      },
+      {
+        "type": "action",
+        "description": "Fill a new customer name into the name field"
+      },
+      {
+        "type": "action",
+        "description": "Fill a new valid email into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid password into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the registration form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an account creation success confirmation is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the user is redirected to the tenant menu"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC009",
+    "title": "Switch between status filters without breaking the list",
+    "description": "Verifies staff can switch status filters (e.g., pending, preparing, completed) and see the orders list update accordingly.",
+    "category": "Order Management (Staff/Admin)",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /{{TENANT_SLUG}}/admin/orders"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the active orders list to load"
+      },
+      {
+        "type": "action",
+        "description": "Filter orders by status to show pending orders only"
+      },
+      {
+        "type": "action",
+        "description": "Filter orders by status to show preparing orders only"
+      },
+      {
+        "type": "action",
+        "description": "Filter orders by status to show completed orders only"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the orders list updates when each filter is selected"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC010",
+    "title": "Validate required fields then successfully register tenant",
+    "description": "Verifies missing required registration fields are validated and, after correction, the store registration completes successfully.",
+    "category": "Global Tenant Registration",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /register"
+      },
+      {
+        "type": "action",
+        "description": "Fill a new store name into the store name field"
+      },
+      {
+        "type": "action",
+        "description": "Fill a new unique store slug into the store slug field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the registration form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a required-field validation error is visible"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid email into the admin email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid password into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the registration form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a success confirmation is visible"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC011",
+    "title": "Prevent invalid status transitions from the UI",
+    "description": "Verifies the UI prevents or blocks an invalid order status change that is not allowed from the current state.",
+    "category": "Order Management (Staff/Admin)",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /{{TENANT_SLUG}}/admin/orders"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the active orders list to load"
+      },
+      {
+        "type": "action",
+        "description": "Select an order in a non-pending state"
+      },
+      {
+        "type": "action",
+        "description": "Attempt to change the status to an invalid next state for that order"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the status does not change and an inline validation or disabled control prevents the invalid transition"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC012",
+    "title": "Handle empty-state when a status filter has no matching orders",
+    "description": "Verifies the orders dashboard shows an appropriate empty state when filtering to a status with no matching orders.",
+    "category": "Order Management (Staff/Admin)",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /{{TENANT_SLUG}}/admin/orders"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the active orders list to load"
+      },
+      {
+        "type": "action",
+        "description": "Filter orders by status to show a status that yields no results"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an empty state is displayed for the filtered orders list"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC013",
+    "title": "Correct an invalid email during customer registration and complete sign-up",
+    "description": "Verifies invalid email input is rejected during store-scoped registration and the customer can correct it and successfully register.",
+    "category": "Customer Authentication (Store-scoped)",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /:slug/auth"
+      },
+      {
+        "type": "action",
+        "description": "Select the registration mode"
+      },
+      {
+        "type": "action",
+        "description": "Fill a customer name into the name field"
+      },
+      {
+        "type": "action",
+        "description": "Fill an invalid email into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid password into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the registration form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an email validation error is visible"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid email into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the registration form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the user is redirected to the tenant menu"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC014",
+    "title": "Prevent submitting an empty cart then allow ordering after adding an item",
+    "description": "Verifies submitting an empty cart is blocked with a validation message and, after adding a product, the order can be submitted successfully.",
+    "category": "Store Menu & Ordering (Customer)",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /:slug"
+      },
+      {
+        "type": "action",
+        "description": "Open the cart"
+      },
+      {
+        "type": "action",
+        "description": "Submit the order"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an empty-cart validation message is visible"
+      },
+      {
+        "type": "action",
+        "description": "Close the cart"
+      },
+      {
+        "type": "action",
+        "description": "Add a product to the cart"
+      },
+      {
+        "type": "action",
+        "description": "Open the cart"
+      },
+      {
+        "type": "action",
+        "description": "Submit the order"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an order confirmation is displayed"
+      }
+    ],
+    "priority": "Low"
+  }
+]

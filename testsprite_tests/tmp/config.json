@@ -1,0 +1,20 @@
+{
+  "status": "commited",
+  "type": "frontend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:5173/dummy/admin",
+  "loginUser": "dummy@tendarapp.com",
+  "loginPassword": "130711",
+  "executionArgs": {
+    "projectName": "tendar-app",
+    "projectPath": "d:\\Tendar\\tendar-app",
+    "testIds": [],
+    "additionalInstruction": "",
+    "serverMode": "development",
+    "envs": {
+      "API_KEY": "sk-user--KL7NUb2enb_7CDpIgydkPH6rPfUb0vU1_FrVqY58YihIdOUYWB5RwuN5tfRJyfdqJUAN5PkXInJvaLqASAaEsIWapui58I7sDf3PeHAEEb4Q29SBXqauIi1Dae8W6fxXbM"
+    }
+  },
+  "serverPort": 55576,
+  "proxy": "http://d28446a3-996c-4ead-9523-3d92991c37de:3ltA37ws7HvpuaewnRm3th8vYDdTSu16@tun.testsprite.com:8080"
+}

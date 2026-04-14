@@ -1,0 +1,150 @@
+version: "2"
+type: frontend
+tech_stack:
+  - React
+  - Vite
+  - TailwindCSS
+  - Supabase
+  - React Router
+routes:
+  - path: /
+    file: src/pages/LandingPage.jsx
+    auth_required: false
+    description: Global landing page for the platform
+  - path: /register
+    file: src/pages/RegisterTenantPage.jsx
+    auth_required: false
+    description: Tenant registration page
+  - path: /auth/callback
+    file: src/pages/AuthCallbackPage.jsx
+    auth_required: false
+    description: Supabase OAuth callback handler
+  - path: /:slug
+    file: src/pages/MenuPage.jsx
+    auth_required: false
+    description: Customer facing menu page for a specific tenant
+  - path: /:slug/auth
+    file: src/pages/AuthPage.jsx
+    auth_required: false
+    description: Customer login and registration page for a specific tenant
+  - path: /:slug/orders
+    file: src/pages/CustomerOrdersPage.jsx
+    auth_required: false
+    description: Customer's active and past orders page
+  - path: /:slug/profile
+    file: src/pages/ProfilePage.jsx
+    auth_required: false
+    description: Customer profile page
+  - path: /:slug/admin
+    file: src/pages/AdminDashboard.jsx
+    auth_required: true
+    description: Admin dashboard overview
+  - path: /:slug/admin/orders
+    file: src/pages/OrdersPage.jsx
+    auth_required: true
+    description: Admin/staff live order management
+  - path: /:slug/admin/menu
+    file: src/pages/MenuManagement.jsx
+    auth_required: true
+    description: Admin menu and product management
+  - path: /:slug/admin/history
+    file: src/pages/HistoryPage.jsx
+    auth_required: true
+    description: Admin/staff order history and completed transactions
+  - path: /:slug/admin/categories
+    file: src/pages/CategoriesPage.jsx
+    auth_required: true
+    description: Admin category management
+  - path: /:slug/admin/inventory
+    file: src/pages/InventoryPage.jsx
+    auth_required: true
+    description: Admin/staff inventory and stock management
+  - path: /:slug/admin/analytics
+    file: src/pages/AnalyticsPage.jsx
+    auth_required: true
+    description: Admin sales analytics
+  - path: /:slug/admin/billing
+    file: src/pages/BillingPage.jsx
+    auth_required: true
+    description: Admin billing and subscription plans
+  - path: /:slug/admin/staff
+    file: src/pages/StaffManagement.jsx
+    auth_required: true
+    description: Admin staff and role management
+  - path: /:slug/admin/share
+    file: src/pages/ShareLinkPage.jsx
+    auth_required: true
+    description: Admin QR code and link sharing page
+  - path: /:slug/pos
+    file: src/pages/POSPage.jsx
+    auth_required: true
+    description: Point of sale system for staff/admin point of entry
+features:
+  - name: Global Tenant Registration
+    description: New tenants can create their store with a slug, email/password or Google OAuth.
+    files:
+      - src/pages/RegisterTenantPage.jsx
+    entry_route: /register
+    user_interactions:
+      - Fill email and password inputs or click Google OAuth
+      - Fill store name and slug fields
+      - Submit to create the store
+    api_calls:
+      - method: POST
+        endpoint: Supabase Auth/RPC register_new_tenant
+    auth_required: false
+  - name: Customer Authentication
+    description: Login, Register, Forgot Password for a customer in a specific store context.
+    files:
+      - src/pages/AuthPage.jsx
+    entry_route: /:slug/auth
+    user_interactions:
+      - Choose Login or Register tab
+      - Fill credentials and submit
+      - See success toast and get redirected
+    api_calls:
+      - method: POST
+        endpoint: Supabase Auth
+    auth_required: false
+  - name: Store Menu & Ordering
+    description: Customer browes products, adds them to cart, and checks out.
+    files:
+      - src/pages/MenuPage.jsx
+      - src/components/CartDrawer.jsx
+    entry_route: /:slug
+    user_interactions:
+      - Navigate through categories
+      - Click product to add to cart
+      - Open cart and modify quantities
+      - Add table number or note and submit order
+    api_calls:
+      - method: POST
+        endpoint: Supabase Orders Insert
+    auth_required: false
+  - name: Order Management
+    description: Staff view incoming orders and update their statuses to completed.
+    files:
+      - src/pages/OrdersPage.jsx
+    entry_route: /:slug/admin/orders
+    user_interactions:
+      - View list of active orders
+      - Click to change order status (e.g. Preparing -> Done)
+      - Filter orders by status
+    api_calls:
+      - method: PATCH
+        endpoint: Supabase Orders Update
+    auth_required: true
+  - name: POS System
+    description: Staff can input orders manually for walk-in customers.
+    files:
+      - src/pages/POSPage.jsx
+    entry_route: /:slug/pos
+    user_interactions:
+      - Select products and variants to add to internal POS cart
+      - Add customer name and payment type
+      - Process checkout to insert order directly as completed/paid
+    api_calls:
+      - method: POST
+        endpoint: Supabase Orders Insert (Staff context)
+    auth_required: true
+known_limitations: []
