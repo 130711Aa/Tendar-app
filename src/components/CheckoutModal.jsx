@@ -9,7 +9,7 @@ import { supabase } from '../lib/supabase'
 import toast from 'react-hot-toast'
 
 // Ganti path ini dengan gambar QRIS kamu
-import qrisImage from '/QRIS Tendar Payment.jpeg'
+import qrisImage from '/QRIS Tendar Payment 2.jpg'
 
 const QRIS_IMAGE = qrisImage
 

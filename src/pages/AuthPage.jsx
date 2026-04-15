@@ -34,29 +34,40 @@ export default function AuthPage() {
 
     const { tenantName, tenantId } = useTenantContext()
 
-    // Helper: check if user is admin of the current tenant (by slug, not tenantId)
+    // Helper: check if user has a role in the CURRENT tenant (by slug).
+    // Uses a 2-step approach (resolve slug → check role) to avoid PostgREST
+    // foreign-table join issues that could return roles from the wrong tenant.
     const checkUserRoleBySlug = async (userId) => {
-        const { data, error } = await supabase
-            .from('user_roles')
-            .select('role, tenants!inner(slug)')
-            .eq('user_id', userId)
-            .eq('tenants.slug', slug)
-            .maybeSingle()
-        if (error) {
-            console.error('Role check error:', error)
-            // Fallback: try with tenantId from context if available
-            if (tenantId) {
-                const { data: fallback } = await supabase
-                    .from('user_roles')
-                    .select('role')
-                    .eq('user_id', userId)
-                    .eq('tenant_id', tenantId)
+        try {
+            // Step 1: Resolve slug to tenant_id
+            const resolvedTenantId = tenantId || (await (async () => {
+                const { data } = await supabase
+                    .from('tenants')
+                    .select('id')
+                    .eq('slug', slug)
                     .maybeSingle()
-                return fallback?.role || 'customer'
+                return data?.id
+            })())
+
+            if (!resolvedTenantId) return 'customer'
+
+            // Step 2: Check role for THIS specific tenant only
+            const { data, error } = await supabase
+                .from('user_roles')
+                .select('role')
+                .eq('user_id', userId)
+                .eq('tenant_id', resolvedTenantId)
+                .maybeSingle()
+
+            if (error) {
+                console.error('Role check error:', error)
+                return 'customer'
             }
+            return data?.role || 'customer'
+        } catch (err) {
+            console.error('Role check exception:', err)
             return 'customer'
         }
-        return data?.role || 'customer'
     }
 
     const handleGoogleLogin = async () => {

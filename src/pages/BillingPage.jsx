@@ -199,7 +199,7 @@ function QRISModal({ invoice, planName, onClose, onSuccess, tenantId }) {
             <p className="text-xs text-slate-400 mb-2 font-medium">Scan QR Code di bawah ini</p>
             <div className="w-52 h-52 rounded-2xl border-2 border-slate-200 overflow-hidden bg-slate-50 flex items-center justify-center">
               <img
-                src="/QRIS Tendar Payment.jpeg"
+                src="/QRIS Tendar Payment 2.jpg"
                 alt="QRIS Tendar"
                 className="w-full h-full object-contain"
                 onError={(e) => {
@@ -211,7 +211,7 @@ function QRISModal({ invoice, planName, onClose, onSuccess, tenantId }) {
                 className="hidden w-full h-full items-center justify-center flex-col gap-2 text-slate-400 text-center p-4"
               >
                 <span className="material-symbols-outlined text-[40px]">qr_code_2</span>
-                <p className="text-xs">Letakkan file <code className="font-mono bg-slate-100 px-1 rounded">QRIS Tendar Payment.jpeg</code> di folder <code className="font-mono bg-slate-100 px-1 rounded">public/</code></p>
+                <p className="text-xs">Letakkan file <code className="font-mono bg-slate-100 px-1 rounded">QRIS Tendar Payment 2.jpg</code> di folder <code className="font-mono bg-slate-100 px-1 rounded">public/</code></p>
               </div>
             </div>
             <p className="mt-2 text-[10px] text-slate-400">
