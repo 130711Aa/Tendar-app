@@ -175,7 +175,7 @@ function ProfileDropdown({ user, onLogout }) {
 // ── Main LandingPage ──────────────────────────────────────────────────
 export default function LandingPage() {
     const navigate = useNavigate()
-    const { user, isAdmin, isAuthenticated, logout, loading } = useAuth()
+    const { user, isAdmin, isSuperAdmin, isAuthenticated, logout, loading } = useAuth()
     const [showLoginModal, setShowLoginModal] = useState(false)
     const [redirecting, setRedirecting] = useState(false)
 
@@ -185,6 +185,19 @@ export default function LandingPage() {
         setRedirecting(true)
 
         try {
+            // Check superadmin first
+            const { data: saData } = await supabase
+                .from('user_roles')
+                .select('role')
+                .eq('user_id', loggedUser.id)
+                .eq('role', 'superadmin')
+                .maybeSingle()
+
+            if (saData) {
+                navigate('/superadmin')
+                return
+            }
+
             // Find any store they manage (admin or staff)
             const { data: roleData } = await supabase
                 .from('user_roles')
@@ -222,6 +235,19 @@ export default function LandingPage() {
     useEffect(() => {
         if (!loading && isAuthenticated && user) {
             const redirect = async () => {
+                // Check superadmin first
+                const { data: saData } = await supabase
+                    .from('user_roles')
+                    .select('role')
+                    .eq('user_id', user.id)
+                    .eq('role', 'superadmin')
+                    .maybeSingle()
+
+                if (saData) {
+                    navigate('/superadmin', { replace: true })
+                    return
+                }
+
                 const { data: roleData } = await supabase
                     .from('user_roles')
                     .select('role, tenant_id')

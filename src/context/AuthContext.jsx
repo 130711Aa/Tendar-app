@@ -8,6 +8,7 @@ export function AuthProvider({ children }) {
     const [session, setSession] = useState(null)
     const [loading, setLoading] = useState(true)
     const [isAdmin, setIsAdmin] = useState(false)
+    const [isSuperAdmin, setIsSuperAdmin] = useState(false)
     const [adminChecked, setAdminChecked] = useState(false)
     const [isRecovering, setIsRecovering] = useState(false)
 
@@ -22,6 +23,7 @@ export function AuthProvider({ children }) {
                 setSession(session)
                 setUser(session?.user ?? null)
                 await checkAdmin(session?.user)
+                await checkSuperAdmin(session?.user)
             } catch (err) {
                 console.error('Auth initialization error:', err)
                 // Start with no user if error
@@ -73,6 +75,27 @@ export function AuthProvider({ children }) {
         }
     }
 
+    const checkSuperAdmin = async (user) => {
+        if (!user) {
+            setIsSuperAdmin(false)
+            return
+        }
+        try {
+            const { data, error } = await supabase
+                .from('user_roles')
+                .select('role')
+                .eq('user_id', user.id)
+                .eq('role', 'superadmin')
+                .maybeSingle()
+
+            if (error) throw error
+            setIsSuperAdmin(!!data)
+        } catch (err) {
+            console.error('Error checking superadmin role:', err)
+            setIsSuperAdmin(false)
+        }
+    }
+
     const login = async (email, password) => {
         setLoading(true)
         const { data, error } = await supabase.auth.signInWithPassword({
@@ -86,6 +109,7 @@ export function AuthProvider({ children }) {
         // Wait for admin check to complete before setting loading to false
         // This prevents ProtectedRoute from redirecting before isAdmin is set
         await checkAdmin(data.user)
+        await checkSuperAdmin(data.user)
         setAdminChecked(true)
         setLoading(false)
         return { success: true, data }
@@ -112,6 +136,7 @@ export function AuthProvider({ children }) {
         setUser(null)
         setSession(null)
         setIsAdmin(false)
+        setIsSuperAdmin(false)
         setLoading(false)
     }
 
@@ -141,6 +166,7 @@ export function AuthProvider({ children }) {
         session,
         loading,
         isAdmin,
+        isSuperAdmin,
         adminChecked,
         isAuthenticated: !!user,
         login,

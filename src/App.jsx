@@ -12,6 +12,7 @@ import { TenantProvider } from './context/TenantContext'
 import Navbar from './components/Navbar'
 import CartDrawer from './components/CartDrawer'
 import ProtectedRoute from './components/ProtectedRoute'
+import SuperAdminRoute from './components/SuperAdminRoute'
 import ErrorBoundary from './components/ErrorBoundary'
 import { useAuth } from './context/AuthContext'
 import { useTenantContext } from './context/TenantContext'
@@ -36,6 +37,12 @@ const POSPage = lazy(() => import('./pages/POSPage'))
 const BillingPage = lazy(() => import('./pages/BillingPage'))
 const StaffManagement = lazy(() => import('./pages/StaffManagement'))
 const ShareLinkPage = lazy(() => import('./pages/ShareLinkPage'))
+
+// Super Admin pages (lazy loaded)
+const SuperAdminLayout = lazy(() => import('./pages/superadmin/SuperAdminLayout'))
+const SADashboard = lazy(() => import('./pages/superadmin/SADashboard'))
+const SAPaymentVerification = lazy(() => import('./pages/superadmin/SAPaymentVerification'))
+const SAMerchantManagement = lazy(() => import('./pages/superadmin/SAMerchantManagement'))
 
 const LoadingFallback = () => (
     <div className="min-h-screen flex items-center justify-center bg-[#fcfaf8]">
@@ -156,6 +163,19 @@ export default function App() {
                         <Route path="/register" element={<RegisterTenantPage />} />
                         <Route path="/auth/callback" element={<AuthCallbackPage />} />
                         <Route path="/docs" element={<DocsPage />} />
+
+                        {/* Super Admin Panel — global, no tenant context */}
+                        <Route path="/superadmin" element={
+                            <Suspense fallback={<LoadingFallback />}>
+                                <SuperAdminRoute>
+                                    <SuperAdminLayout />
+                                </SuperAdminRoute>
+                            </Suspense>
+                        }>
+                            <Route index element={<SADashboard />} />
+                            <Route path="payments" element={<SAPaymentVerification />} />
+                            <Route path="merchants" element={<SAMerchantManagement />} />
+                        </Route>
 
                         {/* Tenant-scoped pages — slug resolves the active tenant */}
                         <Route path="/:slug/*" element={

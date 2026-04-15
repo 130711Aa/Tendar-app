@@ -67,6 +67,20 @@ export default function AuthCallbackPage() {
                 }
 
                 // If no specific store context (logged in via global URL), find ANY store they manage
+                // First check if user is superadmin
+                const { data: saData } = await supabase
+                    .from('user_roles')
+                    .select('role')
+                    .eq('user_id', user.id)
+                    .eq('role', 'superadmin')
+                    .maybeSingle()
+
+                if (saData) {
+                    setStatus('Selamat datang Super Admin!')
+                    navigate('/superadmin', { replace: true })
+                    return
+                }
+
                 const { data: roleData } = await supabase
                     .from('user_roles')
                     .select('role, tenant_id')

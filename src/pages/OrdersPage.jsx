@@ -32,6 +32,7 @@ const STATUS_CONFIG = {
 }
 
 const FILTER_TABS = [
+    { key: 'active', label: 'Aktif', icon: 'playlist_play' },
     { key: 'all', label: 'Semua', icon: 'list' },
     { key: 'pending', label: 'Menunggu', icon: 'schedule' },
     { key: 'processing', label: 'Diproses', icon: 'autorenew' },
@@ -41,7 +42,7 @@ const FILTER_TABS = [
 export default function OrdersPage() {
     const { orders, updateOrderStatus, deleteOrder, clearAllOrders } = useOrders()
     const { isStoreOpen } = useStoreStatus()
-    const [activeFilter, setActiveFilter] = useState('all')
+    const [activeFilter, setActiveFilter] = useState('active')
     const [expandedOrder, setExpandedOrder] = useState(null)
     const [proofModal, setProofModal] = useState(null) // URL of proof to preview
     
@@ -88,6 +89,7 @@ export default function OrdersPage() {
     }, [orders])
 
     const counts = useMemo(() => ({
+        active: todaysOrders.filter(o => o.status === 'pending' || o.status === 'processing').length,
         all: todaysOrders.length,
         pending: todaysOrders.filter(o => o.status === 'pending').length,
         processing: todaysOrders.filter(o => o.status === 'processing').length,
@@ -98,7 +100,9 @@ export default function OrdersPage() {
         let filtered = [...todaysOrders]
 
         // 4. Existing Status Filter
-        if (activeFilter !== 'all') {
+        if (activeFilter === 'active') {
+            filtered = filtered.filter(o => o.status === 'pending' || o.status === 'processing')
+        } else if (activeFilter !== 'all') {
             filtered = filtered.filter(o => o.status === activeFilter)
         }
 
