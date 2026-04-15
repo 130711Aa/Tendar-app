@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { clearSuperAdminVerification } from '../../components/SuperAdminAuthWall'
 import { Toaster } from 'react-hot-toast'
 
 const NAV_ITEMS = [
@@ -15,8 +16,15 @@ export default function SuperAdminLayout() {
     const [sidebarOpen, setSidebarOpen] = useState(false)
 
     const handleLogout = async () => {
+        clearSuperAdminVerification()
         await logout()
         navigate('/')
+    }
+
+    const handleLockSession = () => {
+        clearSuperAdminVerification()
+        // Force page reload → SuperAdminRoute checks sessionStorage and shows auth wall
+        window.location.reload()
     }
 
     return (
@@ -79,6 +87,15 @@ export default function SuperAdminLayout() {
                             <p className="text-indigo-400 text-[10px] font-medium">Superadmin</p>
                         </div>
                     </div>
+                    {/* Lock session */}
+                    <button
+                        onClick={handleLockSession}
+                        className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-yellow-400 hover:bg-yellow-500/10 hover:text-yellow-300 transition-colors mb-1"
+                        title="Kunci sesi tanpa logout"
+                    >
+                        <span className="material-symbols-outlined text-[16px]">lock</span>
+                        Kunci Sesi
+                    </button>
                     <button
                         onClick={handleLogout}
                         className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors"
