@@ -36,9 +36,13 @@ DECLARE
 BEGIN
     SELECT id INTO sa_uid FROM auth.users WHERE email = 'admin@tendarapp.com' LIMIT 1;
     IF sa_uid IS NOT NULL THEN
+        -- Delete any existing superadmin row for this user (NULL tenant_id won't match ON CONFLICT)
+        DELETE FROM public.user_roles WHERE user_id = sa_uid AND role = 'superadmin';
+        -- Also delete any NULL tenant_id row for this user
+        DELETE FROM public.user_roles WHERE user_id = sa_uid AND tenant_id IS NULL;
+        -- Insert fresh
         INSERT INTO public.user_roles (user_id, role, tenant_id)
-        VALUES (sa_uid, 'superadmin', NULL)
-        ON CONFLICT (user_id, tenant_id) DO UPDATE SET role = 'superadmin';
+        VALUES (sa_uid, 'superadmin', NULL);
         RAISE NOTICE 'Superadmin role assigned to admin@tendarapp.com (uid: %)', sa_uid;
     ELSE
         RAISE WARNING 'User admin@tendarapp.com not found in auth.users. Create this user first.';
