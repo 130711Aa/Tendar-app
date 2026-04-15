@@ -128,6 +128,7 @@ export async function getPaymentStatus(paymentId) {
  *   - null                   → no active invoice, safe to create new one
  */
 export async function getActiveInvoice(tenantId, planId) {
+  // We need to fetch both, but filter out 'pending' invoices that have passed their deadline
   const { data } = await supabase
     .from('invoices')
     .select('*')
@@ -137,6 +138,13 @@ export async function getActiveInvoice(tenantId, planId) {
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle()
+
+  if (!data) return null
+
+  // If it's pending but past deadline, we treat it as no active invoice
+  if (data.status === 'pending' && new Date(data.deadline) < new Date()) {
+    return null
+  }
 
   return data
 }
