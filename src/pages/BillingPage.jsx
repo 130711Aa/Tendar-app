@@ -147,6 +147,70 @@ function QRISModal({ invoice, planName, onClose, onSuccess, tenantId }) {
 
   const isExpired = countdown === '00:00:00'
 
+  // ── If user already paid this invoice, show review status (not payment form)
+  if (invoice?.status === 'review_needed') {
+    return (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+        onClick={(e) => e.target === e.currentTarget && onClose()}
+      >
+        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in">
+          <div className="bg-gradient-to-br from-amber-500 to-orange-500 p-6 text-white">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-orange-100 text-sm font-medium mb-1">Status Pembayaran</p>
+                <h2 className="text-2xl font-black">Paket {planName}</h2>
+              </div>
+              <button onClick={onClose} className="text-orange-100 hover:text-white transition-colors p-1">
+                <span className="material-symbols-outlined text-[28px]">close</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="p-8 flex flex-col items-center text-center gap-4">
+            <div className="w-20 h-20 rounded-full bg-amber-100 flex items-center justify-center">
+              <span className="material-symbols-outlined text-amber-600 text-5xl">hourglass_top</span>
+            </div>
+            <div>
+              <h3 className="text-xl font-black text-slate-800">Pembayaran Sedang Diverifikasi</h3>
+              <p className="text-slate-500 text-sm mt-2 leading-relaxed">
+                Bukti transfer Anda sudah kami terima dan sedang ditinjau oleh tim Tendar.
+                Proses verifikasi biasanya selesai dalam <strong>1×24 jam</strong>.
+              </p>
+            </div>
+            <div className="w-full bg-amber-50 border border-amber-200 rounded-2xl p-4 text-left space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-500">Paket</span>
+                <span className="font-bold text-slate-800 uppercase">{planName}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-500">Total Dibayar</span>
+                <span className="font-bold text-slate-800">{formatIDR(invoice.total_amount)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-500">Status</span>
+                <span className="font-semibold text-amber-600 flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[16px]">pending</span>
+                  Menunggu Konfirmasi
+                </span>
+              </div>
+            </div>
+            <p className="text-xs text-slate-400">
+              Jika sudah lebih dari 24 jam belum dikonfirmasi, hubungi support Tendar.
+            </p>
+            <button
+              onClick={onClose}
+              className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-3 rounded-2xl transition-colors"
+            >
+              Tutup
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
@@ -357,13 +421,25 @@ export default function BillingPage() {
     }
 
     setLoadingPlan(plan.id)
-    const tid = toast.loading('Membuat invoice...')
+    const tid = toast.loading('Mengecek invoice...')
 
     try {
-      // Check if there's already an active invoice for this plan
+      // Check if there's already an active or under-review invoice for this plan
       let invoice = await getActiveInvoice(tenantId, plan.id)
 
+      if (invoice?.status === 'review_needed') {
+        // User already paid — block new invoice, show review status
+        toast.dismiss(tid)
+        toast.success('Pembayaran Anda sedang diverifikasi oleh tim kami. Harap tunggu.', { duration: 6000 })
+        // Still show modal so user can see their existing invoice info
+        setActiveInvoice(invoice)
+        setSelectedPlan(plan)
+        setShowModal(true)
+        return
+      }
+
       if (!invoice) {
+        toast.loading('Membuat invoice...', { id: tid })
         invoice = await createInvoice(tenantId, plan.id)
       }
 

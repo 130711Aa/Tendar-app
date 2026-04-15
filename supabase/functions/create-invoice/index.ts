@@ -45,7 +45,27 @@ Deno.serve(async (req: Request) => {
       { auth: { persistSession: false } }
     );
 
-    // Expire any previous pending invoices for same tenant + plan
+    // Safety: Check if there's already a review_needed invoice for this tenant+plan.
+    // If so, return it directly — user has already paid, don't create a new one.
+    const { data: existingReview } = await supabase
+      .from("invoices")
+      .select("*")
+      .eq("tenant_id", tenant_id)
+      .eq("plan_id", plan_id)
+      .eq("status", "review_needed")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (existingReview) {
+      console.log("[create-invoice] Found existing review_needed invoice, returning it.");
+      return new Response(
+        JSON.stringify({ invoice: existingReview }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Expire any previous PENDING invoices for same tenant + plan (NOT review_needed)
     const { error: expireError } = await supabase
       .from("invoices")
       .update({ status: "expired" })
@@ -56,6 +76,7 @@ Deno.serve(async (req: Request) => {
     if (expireError) {
       console.warn("[create-invoice] Could not expire old invoices:", expireError.message);
     }
+
 
     // Create new invoice (deadline = 24 hours from now)
     const deadline = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();

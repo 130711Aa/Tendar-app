@@ -121,8 +121,11 @@ export async function getPaymentStatus(paymentId) {
 }
 
 /**
- * Get the latest pending invoice for a tenant + plan.
- * Returns null if no active invoice.
+ * Get the latest active invoice for a tenant + plan.
+ * Returns:
+ *   - status 'pending'       → invoice exists, user hasn't paid yet
+ *   - status 'review_needed' → user already paid, waiting for superadmin review
+ *   - null                   → no active invoice, safe to create new one
  */
 export async function getActiveInvoice(tenantId, planId) {
   const { data } = await supabase
@@ -130,8 +133,7 @@ export async function getActiveInvoice(tenantId, planId) {
     .select('*')
     .eq('tenant_id', tenantId)
     .eq('plan_id', planId)
-    .eq('status', 'pending')
-    .gt('deadline', new Date().toISOString())
+    .in('status', ['pending', 'review_needed'])
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle()
