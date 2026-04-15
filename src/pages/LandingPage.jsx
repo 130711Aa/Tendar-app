@@ -186,12 +186,15 @@ export default function LandingPage() {
 
         try {
             // Check superadmin first
-            const { data: saData } = await supabase
+            const { data: saData, error: saError } = await supabase
                 .from('user_roles')
                 .select('role')
                 .eq('user_id', loggedUser.id)
                 .eq('role', 'superadmin')
+                .limit(1)
                 .maybeSingle()
+
+            if (saError) console.error("Error checking superadmin:", saError);
 
             if (saData) {
                 navigate('/superadmin')
@@ -236,12 +239,15 @@ export default function LandingPage() {
         if (!loading && isAuthenticated && user) {
             const redirect = async () => {
                 // Check superadmin first
-                const { data: saData } = await supabase
+                const { data: saData, error: saError } = await supabase
                     .from('user_roles')
                     .select('role')
                     .eq('user_id', user.id)
                     .eq('role', 'superadmin')
+                    .limit(1)
                     .maybeSingle()
+
+                if (saError) console.error("Error auto-redirect superadmin:", saError)
 
                 if (saData) {
                     navigate('/superadmin', { replace: true })

@@ -86,9 +86,14 @@ export function AuthProvider({ children }) {
                 .select('role')
                 .eq('user_id', user.id)
                 .eq('role', 'superadmin')
+                .limit(1)
                 .maybeSingle()
 
-            if (error) throw error
+            if (error) {
+                console.error("Supabase error checking superadmin:", error)
+            }
+            // Even if there's an error, data might be null, so !!data evaluates to false. 
+            // In case of error but we think they should be superadmin, we still need to be secure.
             setIsSuperAdmin(!!data)
         } catch (err) {
             console.error('Error checking superadmin role:', err)
