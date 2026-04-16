@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { toast } from 'react-hot-toast'
 import { useTenantContext } from '../context/TenantContext'
-import { createInvoice, uploadReceiptAndProcess, formatIDR, getActiveInvoice } from '../lib/billing'
+import { createInvoice, applyPromoToInvoice, uploadReceiptAndProcess, formatIDR, getActiveInvoice } from '../lib/billing'
 import { supabase } from '../lib/supabase'
 
 // ── Plan definitions ──────────────────────────────────────────────────
@@ -95,13 +95,16 @@ function SubscriptionTimer({ expiresAt, plan }) {
 }
 
 // ── QRIS Payment Modal ────────────────────────────────────────────────
-function QRISModal({ invoice, planName, onClose, onSuccess, tenantId, onApplyPromo }) {
+function QRISModal({ invoice: initialInvoice, planPriceBase, planName, onClose, onSuccess, tenantId }) {
+  // Local invoice state so promo updates are instant without re-mounting modal
+  const [invoice, setInvoice] = useState(initialInvoice)
   const countdown = useCountdown(invoice?.deadline)
   const [uploadStep, setUploadStep] = useState('idle') // idle | uploading | processing | done | error
   const [resultMsg, setResultMsg] = useState('')
   const [resultStatus, setResultStatus] = useState(null) // 'valid' | 'review_needed' | 'rejected'
   const [dragOver, setDragOver] = useState(false)
   const [promoCode, setPromoCode] = useState('')
+  const [promoApplied, setPromoApplied] = useState(false)
   const [applyingPromo, setApplyingPromo] = useState(false)
   const fileRef = useRef()
 
@@ -150,12 +153,14 @@ function QRISModal({ invoice, planName, onClose, onSuccess, tenantId, onApplyPro
 
   const handlePromoSubmit = async (e) => {
     e.preventDefault()
-    if (!promoCode.trim()) return
+    if (!promoCode.trim() || promoApplied) return
     setApplyingPromo(true)
     try {
-      await onApplyPromo(promoCode.trim())
-      toast.success('Kode promo berhasil digunakan!')
+      const updated = await applyPromoToInvoice(invoice.id, promoCode.trim(), planPriceBase)
+      setInvoice(updated) // instant local update — no re-mount, no new invoice
+      setPromoApplied(true)
       setPromoCode('')
+      toast.success(`Promo berhasil! Hemat ${formatIDR(updated.discount_amount)} 🎉`)
     } catch (err) {
       toast.error(err.message || 'Gagal menggunakan kode promo')
     } finally {
@@ -279,23 +284,30 @@ function QRISModal({ invoice, planName, onClose, onSuccess, tenantId, onApplyPro
           <div className="p-5 space-y-4 overflow-y-auto flex-1 custom-scrollbar">
             {/* Promo Code Input */}
             {uploadStep === 'idle' && !isExpired && (
-              <form onSubmit={handlePromoSubmit} className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Punya Kode Promo?"
-                  value={promoCode}
-                  onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-                  disabled={applyingPromo}
-                  className="flex-1 border text-sm border-slate-200 rounded-lg px-3 py-2 uppercase focus:outline-none focus:ring-2 focus:ring-[#ff8c00]/40 focus:border-[#ff8c00]"
-                />
-                <button
-                  type="submit"
-                  disabled={!promoCode.trim() || applyingPromo}
-                  className="bg-slate-800 text-white rounded-lg px-4 text-xs font-bold hover:bg-slate-700 disabled:opacity-50 transition-colors"
-                >
-                  {applyingPromo ? 'Tunggu...' : 'Apply'}
-                </button>
-              </form>
+              promoApplied ? (
+                <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+                  <span className="material-symbols-outlined text-emerald-500 text-[16px]">check_circle</span>
+                  <span className="text-xs font-bold text-emerald-700">Promo diterapkan — hemat {formatIDR(invoice.discount_amount)}</span>
+                </div>
+              ) : (
+                <form onSubmit={handlePromoSubmit} className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Punya Kode Promo?"
+                    value={promoCode}
+                    onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                    disabled={applyingPromo}
+                    className="flex-1 border text-sm border-slate-200 rounded-lg px-3 py-2 uppercase focus:outline-none focus:ring-2 focus:ring-[#ff8c00]/40 focus:border-[#ff8c00]"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!promoCode.trim() || applyingPromo}
+                    className="bg-slate-800 text-white rounded-lg px-4 text-xs font-bold hover:bg-slate-700 disabled:opacity-50 transition-colors"
+                  >
+                    {applyingPromo ? 'Tunggu...' : 'Apply'}
+                  </button>
+                </form>
+              )
             )}
 
             {/* Timer */}
@@ -717,14 +729,11 @@ export default function BillingPage() {
       {showModal && activeInvoice && selectedPlan && (
         <QRISModal
           invoice={activeInvoice}
+          planPriceBase={selectedPlan.price}
           planName={selectedPlan.name}
           tenantId={tenantId}
           onClose={() => setShowModal(false)}
           onSuccess={handlePaymentSuccess}
-          onApplyPromo={async (promoCode) => {
-            const newInvoice = await createInvoice(tenantId, selectedPlan.id, promoCode)
-            setActiveInvoice(newInvoice)
-          }}
         />
       )}
     </div>
