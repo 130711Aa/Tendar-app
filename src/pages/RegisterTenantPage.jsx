@@ -21,6 +21,12 @@ function toSlug(text) {
         .replace(/^-|-$/g, '')
 }
 
+const RESERVED_SLUGS = [
+    'admin', 'api', 'auth', 'superadmin', 'tendar', 'dashboard', 'login', 
+    'register', 'signup', 'settings', 'profile', 'billing', 'webhook', 
+    'pos', 'menu', 'store', 'assets', 'static', 'public', 'system', 'root'
+]
+
 export default function RegisterTenantPage() {
     const navigate = useNavigate()
     const [searchParams] = useSearchParams()
@@ -85,6 +91,7 @@ export default function RegisterTenantPage() {
         e.preventDefault()
         if (!storeName || !slug) { setError('Nama toko dan slug wajib diisi.'); return }
         if (slug.length < 3) { setError('Slug minimal 3 karakter.'); return }
+        if (RESERVED_SLUGS.includes(slug)) { setError('Alamat slug ini tidak bisa digunakan karena khusus untuk sistem Tendar.'); return }
 
         setLoading(true)
         setError('')
