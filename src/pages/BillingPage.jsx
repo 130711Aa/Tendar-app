@@ -154,7 +154,7 @@ function QRISModal({ invoice, planName, onClose, onSuccess, tenantId }) {
         className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
         onClick={(e) => e.target === e.currentTarget && onClose()}
       >
-        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in">
+        <div className="rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in">
           <div className="bg-gradient-to-br from-amber-500 to-orange-500 p-6 text-white">
             <div className="flex justify-between items-start">
               <div>
@@ -167,7 +167,7 @@ function QRISModal({ invoice, planName, onClose, onSuccess, tenantId }) {
             </div>
           </div>
 
-          <div className="p-8 flex flex-col items-center text-center gap-4">
+          <div className="bg-white p-8 flex flex-col items-center text-center gap-4">
             <div className="w-20 h-20 rounded-full bg-amber-100 flex items-center justify-center">
               <span className="material-symbols-outlined text-amber-600 text-5xl">hourglass_top</span>
             </div>
@@ -216,7 +216,7 @@ function QRISModal({ invoice, planName, onClose, onSuccess, tenantId }) {
       className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in">
+      <div className="rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in">
         {/* Header */}
         <div className="bg-gradient-to-br from-[#ff8c00] to-orange-500 p-6 text-white">
           <div className="flex justify-between items-start">
@@ -246,7 +246,7 @@ function QRISModal({ invoice, planName, onClose, onSuccess, tenantId }) {
         </div>
 
         {/* Body */}
-        <div className="p-6 space-y-5">
+        <div className="bg-white p-6 space-y-5">
           {/* Timer */}
           <div className={`flex items-center justify-between px-4 py-2.5 rounded-xl border text-sm font-semibold ${
             isExpired ? 'bg-red-50 border-red-200 text-red-600' : 'bg-amber-50 border-amber-200 text-amber-700'
