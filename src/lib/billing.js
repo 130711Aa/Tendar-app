@@ -18,11 +18,13 @@ export async function hashFile(file) {
  * @param {string} tenantId
  * @param {string} planId  - 'starter' | 'business' | 'pro'
  */
-export async function createInvoice(tenantId, planId) {
+export async function createInvoice(tenantId, planId, promoCode = '') {
   const { data, error } = await supabase.functions.invoke('create-invoice', {
-    body: { tenant_id: tenantId, plan_id: planId },
+    body: { tenant_id: tenantId, plan_id: planId, promo_code: promoCode },
   })
-  if (error) throw new Error(error.message || 'Gagal membuat invoice')
+  if (error) {
+    throw new Error(error.message || 'Gagal membuat invoice')
+  }
   if (data?.error) throw new Error(data.error)
   return data.invoice
 }

@@ -18,7 +18,7 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { plan_id, tenant_id } = await req.json();
+    const { plan_id, tenant_id, promo_code } = await req.json();
 
     if (!plan_id || !tenant_id) {
       return new Response(
@@ -35,15 +35,61 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Generate unique 3-digit code (100–999) to differentiate payments
-    const uniqueCode = Math.floor(Math.random() * 900) + 100;
-    const totalAmount = baseAmount + uniqueCode;
-
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
       { auth: { persistSession: false } }
     );
+
+    // Handle Promo Code if provided
+    let discountAmount = 0;
+    let promoCodeId = null;
+
+    if (promo_code) {
+      const { data: promo, error: promoError } = await supabase
+        .from("promo_codes")
+        .select("*")
+        .ilike("code", promo_code)
+        .eq("is_active", true)
+        .single();
+      
+      if (promoError || !promo) {
+        return new Response(
+          JSON.stringify({ error: "Kode promo tidak valid atau sudah tidak aktif." }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      if (promo.valid_until && new Date(promo.valid_until) < new Date()) {
+        return new Response(
+          JSON.stringify({ error: "Kode promo sudah kadaluarsa." }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      if (promo.max_uses !== null && promo.current_uses >= promo.max_uses) {
+        return new Response(
+          JSON.stringify({ error: "Kuota kode promo telah habis digunakan." }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      discountAmount = promo.discount_amount;
+      promoCodeId = promo.id;
+
+      // Increment usage count
+      await supabase
+        .from("promo_codes")
+        .update({ current_uses: promo.current_uses + 1 })
+        .eq("id", promo.id);
+    }
+
+    // Generate unique 3-digit code (100–999) to differentiate payments
+    const uniqueCode = Math.floor(Math.random() * 900) + 100;
+    const finalBaseAmount = Math.max(0, baseAmount - discountAmount);
+    
+    // If the base amount becomes 0 due to discount, totalAmount is exactly 0.
+    const totalAmount = finalBaseAmount === 0 ? 0 : finalBaseAmount + uniqueCode;
 
     // Safety: Check if there's already a review_needed invoice for this tenant+plan.
     // If so, return it directly — user has already paid, don't create a new one.
@@ -77,21 +123,27 @@ Deno.serve(async (req: Request) => {
       console.warn("[create-invoice] Could not expire old invoices:", expireError.message);
     }
 
-
     // Create new invoice (deadline = 24 hours from now)
     const deadline = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
+    const insertPayload: any = {
+      tenant_id,
+      plan_id,
+      base_amount: baseAmount,
+      unique_code: uniqueCode,
+      total_amount: totalAmount,
+      deadline,
+      status: totalAmount === 0 ? 'valid' : 'pending',
+    };
+
+    if (promoCodeId) {
+      insertPayload.promo_code_id = promoCodeId;
+      insertPayload.discount_amount = discountAmount;
+    }
+
     const { data: invoice, error: insertError } = await supabase
       .from("invoices")
-      .insert({
-        tenant_id,
-        plan_id,
-        base_amount: baseAmount,
-        unique_code: uniqueCode,
-        total_amount: totalAmount,
-        deadline,
-        status: "pending",
-      })
+      .insert(insertPayload)
       .select()
       .single();
 

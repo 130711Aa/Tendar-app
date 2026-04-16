@@ -95,12 +95,14 @@ function SubscriptionTimer({ expiresAt, plan }) {
 }
 
 // ── QRIS Payment Modal ────────────────────────────────────────────────
-function QRISModal({ invoice, planName, onClose, onSuccess, tenantId }) {
+function QRISModal({ invoice, planName, onClose, onSuccess, tenantId, onApplyPromo }) {
   const countdown = useCountdown(invoice?.deadline)
   const [uploadStep, setUploadStep] = useState('idle') // idle | uploading | processing | done | error
   const [resultMsg, setResultMsg] = useState('')
   const [resultStatus, setResultStatus] = useState(null) // 'valid' | 'review_needed' | 'rejected'
   const [dragOver, setDragOver] = useState(false)
+  const [promoCode, setPromoCode] = useState('')
+  const [applyingPromo, setApplyingPromo] = useState(false)
   const fileRef = useRef()
 
   const handleFile = useCallback(async (file) => {
@@ -144,6 +146,21 @@ function QRISModal({ invoice, planName, onClose, onSuccess, tenantId }) {
     e.preventDefault()
     setDragOver(false)
     handleFile(e.dataTransfer.files?.[0])
+  }
+
+  const handlePromoSubmit = async (e) => {
+    e.preventDefault()
+    if (!promoCode.trim()) return
+    setApplyingPromo(true)
+    try {
+      await onApplyPromo(promoCode.trim())
+      toast.success('Kode promo berhasil digunakan!')
+      setPromoCode('')
+    } catch (err) {
+      toast.error(err.message || 'Gagal menggunakan kode promo')
+    } finally {
+      setApplyingPromo(false)
+    }
   }
 
   const isExpired = countdown === '00:00:00'
@@ -214,113 +231,164 @@ function QRISModal({ invoice, planName, onClose, onSuccess, tenantId }) {
   }
 
 
-  return createPortal(
-    <div
-      className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
-      style={{ zIndex: 9999 }}
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
-      <div className="rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in">
-        {/* Header */}
-        <div className="bg-gradient-to-br from-[#ff8c00] to-orange-500 p-6 text-white">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-orange-100 text-sm font-medium mb-1">Bayar via QRIS</p>
-              <h2 className="text-2xl font-black">Paket {planName}</h2>
-            </div>
-            <button
-              onClick={onClose}
-              className="text-orange-100 hover:text-white transition-colors p-1"
-              aria-label="Tutup"
-            >
-              <span className="material-symbols-outlined text-[28px]">close</span>
-            </button>
-          </div>
-
-          {/* Amount */}
-          <div className="mt-4 bg-white/20 rounded-2xl px-5 py-4">
-            <p className="text-orange-100 text-sm">Transfer tepat sebesar</p>
-            <p className="text-4xl font-black tracking-tight mt-1">
-              {formatIDR(invoice.total_amount)}
-            </p>
-            <p className="text-orange-200 text-xs mt-1">
-              (termasuk kode unik <strong className="text-white">+{invoice.unique_code}</strong> untuk verifikasi otomatis)
-            </p>
-          </div>
-        </div>
-
-        {/* Body */}
-        <div className="bg-white p-6 space-y-5">
-          {/* Timer */}
-          <div className={`flex items-center justify-between px-4 py-2.5 rounded-xl border text-sm font-semibold ${
-            isExpired ? 'bg-red-50 border-red-200 text-red-600' : 'bg-amber-50 border-amber-200 text-amber-700'
-          }`}>
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-[18px]">timer</span>
-              <span>Berlaku hingga</span>
-            </div>
-            <span className="font-mono text-base">{countdown ?? '--:--:--'}</span>
-          </div>
-
-          {/* QRIS Image */}
-          <div className="flex flex-col items-center">
-            <p className="text-xs text-slate-400 mb-2 font-medium">Scan QR Code di bawah ini</p>
-            <div className="w-52 h-52 rounded-2xl border-2 border-slate-200 overflow-hidden bg-slate-50 flex items-center justify-center">
-              <img
-                src="/QRIS Tendar Payment 2.jpg"
-                alt="QRIS Tendar"
-                className="w-full h-full object-contain"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none'
-                  e.currentTarget.nextElementSibling.style.display = 'flex'
-                }}
-              />
-              <div
-                className="hidden w-full h-full items-center justify-center flex-col gap-2 text-slate-400 text-center p-4"
-              >
-                <span className="material-symbols-outlined text-[40px]">qr_code_2</span>
-                <p className="text-xs">Letakkan file <code className="font-mono bg-slate-100 px-1 rounded">QRIS Tendar Payment 2.jpg</code> di folder <code className="font-mono bg-slate-100 px-1 rounded">public/</code></p>
+    return createPortal(
+      <div
+        className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+        style={{ zIndex: 9999 }}
+        onClick={(e) => e.target === e.currentTarget && onClose()}
+      >
+        <div className="rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-fade-in bg-white max-h-[95vh] flex flex-col">
+          {/* Header */}
+          <div className="bg-gradient-to-br from-[#ff8c00] to-orange-500 p-5 text-white flex-shrink-0">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-orange-100 text-xs font-medium mb-0.5">Bayar via QRIS</p>
+                <h2 className="text-xl font-black">Paket {planName}</h2>
               </div>
-            </div>
-            <p className="mt-2 text-[10px] text-slate-400">
-              NMID: <span className="font-mono font-bold">ID1026505497952</span> · Tendar Payment · GoPay
-            </p>
-          </div>
-
-          {/* Divider */}
-          <div className="flex items-center gap-3 text-slate-300">
-            <div className="flex-1 h-px bg-slate-100" />
-            <span className="text-xs font-medium text-slate-400">Sudah bayar?</span>
-            <div className="flex-1 h-px bg-slate-100" />
-          </div>
-
-          {/* Upload area */}
-          {uploadStep === 'idle' && !isExpired && (
-            <div>
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                className="hidden"
-                onChange={onFileChange}
-              />
-              <div
-                onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
-                onDragLeave={() => setDragOver(false)}
-                onDrop={onDrop}
-                onClick={() => fileRef.current?.click()}
-                className={`border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all ${
-                  dragOver
-                    ? 'border-[#ff8c00] bg-orange-50'
-                    : 'border-slate-200 hover:border-[#ff8c00]/50 hover:bg-orange-50/30'
-                }`}
+              <button
+                onClick={onClose}
+                className="text-orange-100 hover:text-white transition-colors p-1"
+                aria-label="Tutup"
               >
-                <span className="material-symbols-outlined text-[36px] text-slate-400">upload</span>
-                <p className="text-sm font-semibold text-slate-600 mt-2">Upload Bukti Pembayaran</p>
-                <p className="text-xs text-slate-400 mt-1">Drag & drop atau klik · JPG, PNG, WebP · Maks 5MB</p>
-              </div>
+                <span className="material-symbols-outlined text-[24px]">close</span>
+              </button>
             </div>
-          )}
+
+            {/* Amount */}
+            <div className="mt-3 bg-white/20 rounded-xl px-4 py-3">
+              <p className="text-orange-100 text-[11px] leading-none mb-1">Transfer tepat sebesar</p>
+              {invoice.discount_amount > 0 && (
+                <p className="text-orange-200 text-xs line-through">{formatIDR(invoice.base_amount)}</p>
+              )}
+              {invoice.total_amount === 0 ? (
+                <p className="text-3xl font-black tracking-tight mt-0.5">Gratis (Rp0)</p>
+              ) : (
+                <>
+                  <p className="text-3xl font-black tracking-tight mt-0.5 line-height-1">
+                    {formatIDR(invoice.total_amount)}
+                  </p>
+                  <p className="text-orange-200 text-[10px] mt-1">
+                    (termasuk kode unik <strong className="text-white">+{invoice.unique_code}</strong>)
+                  </p>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Body */}
+          <div className="p-5 space-y-4 overflow-y-auto flex-1 custom-scrollbar">
+            {/* Promo Code Input */}
+            {uploadStep === 'idle' && !isExpired && (
+              <form onSubmit={handlePromoSubmit} className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Punya Kode Promo?"
+                  value={promoCode}
+                  onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                  disabled={applyingPromo}
+                  className="flex-1 border text-sm border-slate-200 rounded-lg px-3 py-2 uppercase focus:outline-none focus:ring-2 focus:ring-[#ff8c00]/40 focus:border-[#ff8c00]"
+                />
+                <button
+                  type="submit"
+                  disabled={!promoCode.trim() || applyingPromo}
+                  className="bg-slate-800 text-white rounded-lg px-4 text-xs font-bold hover:bg-slate-700 disabled:opacity-50 transition-colors"
+                >
+                  {applyingPromo ? 'Tunggu...' : 'Apply'}
+                </button>
+              </form>
+            )}
+
+            {/* Timer */}
+            <div className={`flex items-center justify-between px-3 py-2 rounded-lg border text-sm font-semibold ${
+              isExpired ? 'bg-red-50 border-red-200 text-red-600' : 'bg-amber-50 border-amber-200 text-amber-700'
+            }`}>
+              <div className="flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-[16px]">timer</span>
+                <span className="text-xs">Berlaku hingga</span>
+              </div>
+              <span className="font-mono text-sm">{countdown ?? '--:--:--'}</span>
+            </div>
+
+            {/* QRIS Image only if amount > 0 */}
+            {invoice.total_amount > 0 && (
+              <div className="flex flex-col items-center">
+                <p className="text-[11px] text-slate-400 mb-2 font-medium">Scan QR Code di bawah ini</p>
+                <div className="w-40 h-40 rounded-xl border-2 border-slate-200 overflow-hidden bg-slate-50 flex items-center justify-center p-1">
+                  <img
+                    src="/QRIS Tendar Payment 2.jpg"
+                    alt="QRIS Tendar"
+                    className="w-full h-full object-contain"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none'
+                      e.currentTarget.nextElementSibling.style.display = 'flex'
+                    }}
+                  />
+                  <div
+                    className="hidden w-full h-full items-center justify-center flex-col gap-1 text-slate-400 text-center p-2"
+                  >
+                    <span className="material-symbols-outlined text-[32px]">qr_code_2</span>
+                    <p className="text-[10px]">Letakkan file <code className="font-mono bg-slate-100 px-0.5 rounded">QRIS Tendar Payment 2.jpg</code> di <code className="font-mono bg-slate-100 px-0.5 rounded">public/</code></p>
+                  </div>
+                </div>
+                <p className="mt-2 text-[10px] text-slate-400">
+                  NMID: <span className="font-mono font-bold">ID1026505497952</span> · Tendar
+                </p>
+              </div>
+            )}
+
+            {/* Divider */}
+            {invoice.total_amount > 0 && (
+              <div className="flex items-center gap-3 text-slate-300">
+                <div className="flex-1 h-px bg-slate-100" />
+                <span className="text-[11px] font-medium text-slate-400">Sudah bayar?</span>
+                <div className="flex-1 h-px bg-slate-100" />
+              </div>
+            )}
+
+            {/* Upload area or Start Free */}
+            {uploadStep === 'idle' && !isExpired && (
+              <div>
+                {invoice.total_amount === 0 ? (
+                  <button
+                    onClick={() => {
+                      setUploadStep('done')
+                      setResultStatus('valid')
+                      setResultMsg('Aktivasi paket gratis berhasil!')
+                      toast.success('Aktivasi paket berhasil! 🎉')
+                      setTimeout(() => { onSuccess(); onClose() }, 1500)
+                    }}
+                    className="w-full bg-[#ff8c00] text-white py-3 rounded-xl font-bold hover:bg-[#e07800] transition-colors shadow-lg shadow-[#ff8c00]/20"
+                  >
+                    Aktifkan Paket Sekarang
+                  </button>
+                ) : (
+                  <>
+                    <input
+                      ref={fileRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="hidden"
+                      onChange={onFileChange}
+                    />
+                    <div
+                      onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+                      onDragLeave={() => setDragOver(false)}
+                      onDrop={onDrop}
+                      onClick={() => fileRef.current?.click()}
+                      className={`border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-all ${
+                        dragOver
+                          ? 'border-[#ff8c00] bg-orange-50'
+                          : 'border-slate-200 hover:border-[#ff8c00]/50 hover:bg-orange-50/30'
+                      }`}
+                    >
+                      <span className="material-symbols-outlined text-[28px] text-slate-400">upload</span>
+                      <p className="text-xs font-semibold text-slate-600 mt-1">Upload Bukti Transfer</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">JPG, PNG, WebP · Maks 5MB</p>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
 
           {uploadStep === 'uploading' && (
             <div className="flex flex-col items-center gap-3 py-4">
@@ -653,6 +721,10 @@ export default function BillingPage() {
           tenantId={tenantId}
           onClose={() => setShowModal(false)}
           onSuccess={handlePaymentSuccess}
+          onApplyPromo={async (promoCode) => {
+            const newInvoice = await createInvoice(tenantId, selectedPlan.id, promoCode)
+            setActiveInvoice(newInvoice)
+          }}
         />
       )}
     </div>

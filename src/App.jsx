@@ -43,6 +43,7 @@ const SuperAdminLayout = lazy(() => import('./pages/superadmin/SuperAdminLayout'
 const SADashboard = lazy(() => import('./pages/superadmin/SADashboard'))
 const SAPaymentVerification = lazy(() => import('./pages/superadmin/SAPaymentVerification'))
 const SAMerchantManagement = lazy(() => import('./pages/superadmin/SAMerchantManagement'))
+const SAPromoCodes = lazy(() => import('./pages/superadmin/SAPromoCodes'))
 
 const LoadingFallback = () => (
     <div className="min-h-screen flex items-center justify-center bg-[#fcfaf8]">
@@ -175,6 +176,7 @@ export default function App() {
                             <Route index element={<SADashboard />} />
                             <Route path="payments" element={<SAPaymentVerification />} />
                             <Route path="merchants" element={<SAMerchantManagement />} />
+                            <Route path="promos" element={<SAPromoCodes />} />
                         </Route>
 
                         {/* Tenant-scoped pages — slug resolves the active tenant */}

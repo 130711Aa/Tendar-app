@@ -8,6 +8,7 @@ const NAV_ITEMS = [
     { to: '/superadmin', label: 'Dashboard', icon: 'dashboard', end: true },
     { to: '/superadmin/payments', label: 'Verifikasi Pembayaran', icon: 'receipt_long', end: false },
     { to: '/superadmin/merchants', label: 'Manajemen Merchant', icon: 'store', end: false },
+    { to: '/superadmin/promos', label: 'Kode Promo', icon: 'local_offer', end: false },
 ]
 
 export default function SuperAdminLayout() {
