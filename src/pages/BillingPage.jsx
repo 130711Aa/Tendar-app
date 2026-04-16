@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { toast } from 'react-hot-toast'
 import { useTenantContext } from '../context/TenantContext'
 import { createInvoice, uploadReceiptAndProcess, formatIDR, getActiveInvoice } from '../lib/billing'
@@ -149,7 +150,7 @@ function QRISModal({ invoice, planName, onClose, onSuccess, tenantId }) {
 
   // ── If user already paid this invoice, show review status (not payment form)
   if (invoice?.status === 'review_needed') {
-    return (
+    return createPortal(
       <div
         className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
         style={{ zIndex: 9999 }}
@@ -207,12 +208,13 @@ function QRISModal({ invoice, planName, onClose, onSuccess, tenantId }) {
             </button>
           </div>
         </div>
-      </div>
+      </div>,
+      document.body
     )
   }
 
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
       style={{ zIndex: 9999 }}
@@ -385,7 +387,8 @@ function QRISModal({ invoice, planName, onClose, onSuccess, tenantId }) {
           </p>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
