@@ -64,8 +64,17 @@ export default function SAPromoCodes() {
     const deletePromo = async (id) => {
         if (!window.confirm("Yakin ingin menghapus kode promo ini?")) return
         const { error } = await supabase.from('promo_codes').delete().eq('id', id)
-        if (error) toast.error("Gagal menghapus kode promo")
-        else fetchPromos()
+        if (error) {
+            if (error.code === '23503' || error.message?.toLowerCase().includes('violates foreign key')) {
+                toast.error("Gagal! Promo tidak bisa dihapus karena sudah dipakai dalam histori tagihan. Silakan ubah statusnya menjadi 'Nonaktif'.", { duration: 5000 })
+            } else {
+                toast.error("Gagal menghapus kode promo: " + error.message)
+            }
+        }
+        else {
+            toast.success("Promo berhasil dihapus")
+            fetchPromos()
+        }
     }
 
     return (
