@@ -20,6 +20,8 @@ function LoginModal({ onClose, onSuccess }) {
         setLoading(false)
         if (!result.success) {
             toast.error(result.error || 'Email atau password salah')
+            setEmail('')
+            setPassword('')
         } else {
             onSuccess(result.data.user)
         }

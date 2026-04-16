@@ -150,6 +150,9 @@ export default function AuthPage() {
             }
         } else {
             toast.error(result.error || 'Terjadi kesalahan')
+            // Reset input so user can try again easily
+            setPassword('')
+            if (mode === 'login') setEmail('')
         }
     }
 
