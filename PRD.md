@@ -17,7 +17,7 @@
 ## 2. Core Features & Moduls
 
 ### 2.1 Multi-Tenant Architecture
-- Every registered store (tenant) gets a unique URL slug (`tendar-app.vercel.app/:slug`).
+- Every registered store (tenant) gets a unique URL slug (`tendar.vercel.app/:slug`).
 - Customers entering the URL immediately see the store's digital menu.
 - Full data isolation via PostgreSQL Row Level Security (RLS). A tenant cannot access another tenant's data.
 

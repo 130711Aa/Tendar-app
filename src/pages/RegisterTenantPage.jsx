@@ -7,7 +7,7 @@ function SlugPreview({ slug }) {
     return (
         <div className="mt-1 flex items-center gap-1 text-xs text-slate-400">
             <span className="material-symbols-outlined text-xs">link</span>
-            tendar-app.vercel.app/<strong className="text-orange-500">{slug || 'nama-tokomu'}</strong>
+            tendar.vercel.app/<strong className="text-orange-500">{slug || 'nama-tokomu'}</strong>
         </div>
     )
 }
@@ -190,7 +190,7 @@ export default function RegisterTenantPage() {
                                 Setelah konfirmasi, login dan tokomu akan aktif di:
                             </p>
                             <div className="mt-4 bg-orange-50 border border-orange-200 rounded-xl px-4 py-3">
-                                <p className="font-bold text-orange-600">tendar-app.vercel.app/{slug}</p>
+                                <p className="font-bold text-orange-600">tendar.vercel.app/{slug}</p>
                             </div>
                             <button
                                 onClick={() => navigate(`/${slug}/auth`)}
@@ -302,7 +302,7 @@ export default function RegisterTenantPage() {
                 </div>
 
                 <div className="text-center mt-5 text-slate-400 text-xs space-y-1">
-                    <p>Sudah punya toko? Login di: <strong>tendar-app.vercel.app/<span className="text-orange-500">slug-tokomu</span>/auth</strong></p>
+                    <p>Sudah punya toko? Login di: <strong>tendar.vercel.app/<span className="text-orange-500">slug-tokomu</span>/auth</strong></p>
                     <p>Contoh: <a href="/kareem-juice/auth" className="text-orange-500 hover:underline">kareem-juice/auth</a></p>
                 </div>
             </div>
