@@ -151,7 +151,8 @@ function QRISModal({ invoice, planName, onClose, onSuccess, tenantId }) {
   if (invoice?.status === 'review_needed') {
     return (
       <div
-        className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+        className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+        style={{ zIndex: 9999 }}
         onClick={(e) => e.target === e.currentTarget && onClose()}
       >
         <div className="rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in">
@@ -213,7 +214,8 @@ function QRISModal({ invoice, planName, onClose, onSuccess, tenantId }) {
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+      className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+      style={{ zIndex: 9999 }}
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div className="rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in">
