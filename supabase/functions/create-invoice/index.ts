@@ -84,13 +84,6 @@ Deno.serve(async (req: Request) => {
         .eq("id", promo.id);
     }
 
-    // Generate unique 3-digit code (100–999) to differentiate payments
-    const uniqueCode = Math.floor(Math.random() * 900) + 100;
-    const finalBaseAmount = Math.max(0, baseAmount - discountAmount);
-    
-    // If the base amount becomes 0 due to discount, totalAmount is exactly 0.
-    const totalAmount = finalBaseAmount === 0 ? 0 : finalBaseAmount + uniqueCode;
-
     // Safety: Check if there's already a review_needed invoice for this tenant+plan.
     // If so, return it directly — user has already paid, don't create a new one.
     const { data: existingReview } = await supabase
@@ -111,60 +104,92 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Expire any previous PENDING invoices for same tenant + plan (NOT review_needed)
-    const { error: expireError } = await supabase
+    // Check if there is already a PENDING invoice for this plan
+    const { data: existingPending } = await supabase
       .from("invoices")
-      .update({ status: "expired" })
+      .select("*")
       .eq("tenant_id", tenant_id)
       .eq("plan_id", plan_id)
-      .eq("status", "pending");
+      .eq("status", "pending")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-    if (expireError) {
-      console.warn("[create-invoice] Could not expire old invoices:", expireError.message);
-    }
+    let invoice;
 
-    // Create new invoice (deadline = 24 hours from now)
-    const deadline = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    if (existingPending) {
+      // Reuse the unique_code and just update the amounts/promo
+      const finalBaseAmount = Math.max(0, baseAmount - discountAmount);
+      const totalAmount = finalBaseAmount === 0 ? 0 : finalBaseAmount + existingPending.unique_code;
 
-    const insertPayload: any = {
-      tenant_id,
-      plan_id,
-      base_amount: baseAmount,
-      unique_code: uniqueCode,
-      total_amount: totalAmount,
-      deadline,
-      status: totalAmount === 0 ? 'valid' : 'pending',
-    };
+      const updatePayload: any = {
+        total_amount: totalAmount,
+        status: totalAmount === 0 ? 'valid' : 'pending',
+      };
 
-    if (promoCodeId) {
-      insertPayload.promo_code_id = promoCodeId;
-      insertPayload.discount_amount = discountAmount;
-    }
+      if (promoCodeId) {
+        updatePayload.promo_code_id = promoCodeId;
+        updatePayload.discount_amount = discountAmount;
+      }
 
-    const { data: invoice, error: insertError } = await supabase
-      .from("invoices")
-      .insert(insertPayload)
-      .select()
-      .single();
+      const { data: updatedInvoice, error: updateError } = await supabase
+        .from("invoices")
+        .update(updatePayload)
+        .eq("id", existingPending.id)
+        .select()
+        .single();
+        
+      if (updateError) throw updateError;
+      invoice = updatedInvoice;
+    } else {
+      // Generate new unique code and insert new invoice
+      const uniqueCode = Math.floor(Math.random() * 900) + 100;
+      const finalBaseAmount = Math.max(0, baseAmount - discountAmount);
+      const totalAmount = finalBaseAmount === 0 ? 0 : finalBaseAmount + uniqueCode;
 
-    if (insertError) throw insertError;
+      const deadline = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
-    // Audit log
-    await supabase.from("payment_audit_logs").insert({
-      entity: "invoice",
-      entity_id: invoice.id,
-      action: "created",
-      payload: {
+      const insertPayload: any = {
+        tenant_id,
         plan_id,
         base_amount: baseAmount,
         unique_code: uniqueCode,
         total_amount: totalAmount,
         deadline,
+        status: totalAmount === 0 ? 'valid' : 'pending',
+      };
+
+      if (promoCodeId) {
+        insertPayload.promo_code_id = promoCodeId;
+        insertPayload.discount_amount = discountAmount;
+      }
+
+      const { data: newInvoice, error: insertError } = await supabase
+        .from("invoices")
+        .insert(insertPayload)
+        .select()
+        .single();
+
+      if (insertError) throw insertError;
+      invoice = newInvoice;
+    }
+
+    // Audit log
+    await supabase.from("payment_audit_logs").insert({
+      entity: "invoice",
+      entity_id: invoice.id,
+      action: existingPending ? "updated" : "created",
+      payload: {
+        plan_id,
+        base_amount: baseAmount,
+        unique_code: invoice.unique_code,
+        total_amount: invoice.total_amount,
+        deadline: invoice.deadline,
       },
     });
 
     console.log(
-      `[create-invoice] Invoice created: ${invoice.id} | Tenant: ${tenant_id} | Plan: ${plan_id} | Amount: Rp${totalAmount}`
+      `[create-invoice] Invoice ${existingPending ? 'updated' : 'created'}: ${invoice.id} | Tenant: ${tenant_id} | Plan: ${plan_id} | Amount: Rp${invoice.total_amount}`
     );
 
     return new Response(JSON.stringify({ invoice }), {
