@@ -30,69 +30,36 @@ export async function createInvoice(tenantId, planId, promoCode = '') {
 }
 
 /**
- * Apply a promo code to an existing pending invoice.
- * Validates the promo from Supabase, then updates the invoice directly.
- * Does NOT create a new invoice.
+ * Apply a promo code to an existing pending invoice via Edge Function.
+ * Uses service role on the backend to bypass RLS.
+ * Does NOT create a new invoice — only updates the existing one.
  * @param {string} invoiceId - The existing pending invoice ID
  * @param {string} promoCode - The promo code string entered by user
  * @param {number} baseAmount - The original plan price (without discount)
  * @returns {object} The updated invoice
  */
 export async function applyPromoToInvoice(invoiceId, promoCode, baseAmount) {
-  // 1. Fetch promo code from DB
-  const { data: promo, error: promoError } = await supabase
-    .from('promo_codes')
-    .select('*')
-    .ilike('code', promoCode.trim())
-    .eq('is_active', true)
-    .single()
+  const { data, error } = await supabase.functions.invoke('apply-promo', {
+    body: { invoice_id: invoiceId, promo_code: promoCode, base_amount: baseAmount },
+  })
 
-  if (promoError || !promo) throw new Error('Kode promo tidak valid atau sudah tidak aktif.')
-
-  if (promo.valid_until && new Date(promo.valid_until) < new Date()) {
-    throw new Error('Kode promo sudah kadaluarsa.')
+  if (error) {
+    // Try to extract the actual error message from the response body
+    let message = error.message || 'Gagal menerapkan promo'
+    try {
+      if (error.context?.body) {
+        const reader = error.context.body.getReader()
+        const { value } = await reader.read()
+        const text = new TextDecoder().decode(value)
+        const parsed = JSON.parse(text)
+        message = parsed.error || message
+      }
+    } catch { /* ignore parse errors */ }
+    throw new Error(message)
   }
 
-  if (promo.max_uses !== null && promo.current_uses >= promo.max_uses) {
-    throw new Error('Kuota kode promo telah habis digunakan.')
-  }
-
-  // 2. Calculate new total (preserve the existing unique_code by fetching the invoice first)
-  const { data: currentInvoice, error: fetchErr } = await supabase
-    .from('invoices')
-    .select('unique_code')
-    .eq('id', invoiceId)
-    .single()
-
-  if (fetchErr || !currentInvoice) throw new Error('Invoice tidak ditemukan.')
-
-  const discountAmount = promo.discount_amount
-  const finalBase = Math.max(0, baseAmount - discountAmount)
-  // If after discount the amount is 0, no unique code needed
-  const newTotal = finalBase === 0 ? 0 : finalBase + currentInvoice.unique_code
-
-  // 3. Update invoice with new totals and promo reference
-  const { data: updatedInvoice, error: updateErr } = await supabase
-    .from('invoices')
-    .update({
-      discount_amount: discountAmount,
-      total_amount: newTotal,
-      promo_code_id: promo.id,
-      status: newTotal === 0 ? 'valid' : 'pending',
-    })
-    .eq('id', invoiceId)
-    .select()
-    .single()
-
-  if (updateErr) throw new Error('Gagal menerapkan promo: ' + updateErr.message)
-
-  // 4. Increment usage count
-  await supabase
-    .from('promo_codes')
-    .update({ current_uses: promo.current_uses + 1 })
-    .eq('id', promo.id)
-
-  return updatedInvoice
+  if (data?.error) throw new Error(data.error)
+  return data.invoice
 }
 
 /**
