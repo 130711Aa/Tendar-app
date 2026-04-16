@@ -128,7 +128,6 @@ function TenantAppContent() {
                 </Suspense>
             </div>
             {!isAdmin && !isPOS && <CartDrawer />}
-            <Toaster position="top-center" toastOptions={{ style: { pointerEvents: 'auto' }, duration: 2500 }} />
         </div>
     )
 }
@@ -156,6 +155,7 @@ export default function App() {
     return (
         <BrowserRouter>
             <ErrorBoundary>
+                <Toaster position="top-center" toastOptions={{ style: { pointerEvents: 'auto' }, duration: 2500 }} />
                 <AuthProvider>
                     <Routes>
                         {/* Global pages — no tenant context needed */}
