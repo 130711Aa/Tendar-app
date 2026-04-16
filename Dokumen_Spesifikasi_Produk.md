@@ -19,7 +19,7 @@ Tendar merupakan evolusi dari aplikasi *single-tenant* menjadi platform *multi-t
 ## 2. Fitur & Modul Utama
 
 ### 2.1 Arsitektur Multi-Tenant
-- Setiap toko yang terdaftar (disebut *tenant*) akan mendapatkan URL khusus/unik (`https://tendar-app.netlify.app/:slug`).
+- Setiap toko yang terdaftar (disebut *tenant*) akan mendapatkan URL khusus/unik (`https://tendar-app.vercel.app/:slug`).
 - Pelanggan yang mengakses URL tersebut akan langsung melihat menu digital khusus milik toko itu saja.
 - Data terisolasi sepenuhnya melalui *Row Level Security* (RLS) PostgreSQL. Satu *tenant* tidak bisa mengakses data *tenant* lain.
 

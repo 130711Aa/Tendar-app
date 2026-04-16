@@ -3,7 +3,7 @@ import { QRCodeCanvas } from 'qrcode.react'
 import { useTenantContext } from '../context/TenantContext'
 import toast from 'react-hot-toast'
 
-const BASE_URL = 'https://tendar-app.netlify.app'
+const BASE_URL = 'https://tendar-app.vercel.app'
 
 const QR_SIZES = [
     { label: 'Kecil', value: 200, desc: 'Cocok untuk print struk' },
@@ -199,7 +199,7 @@ export default function ShareLinkPage() {
                             Link Aktif
                         </span>
                         <span className="bg-white/20 backdrop-blur-sm text-white text-xs font-bold px-3 py-1 rounded-full">
-                            tendar-app.netlify.app/{slug}
+                            tendar-app.vercel.app/{slug}
                         </span>
                     </div>
                 </div>

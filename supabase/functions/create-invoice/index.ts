@@ -119,17 +119,30 @@ Deno.serve(async (req: Request) => {
 
     if (existingPending) {
       // Reuse the unique_code and just update the amounts/promo
-      const finalBaseAmount = Math.max(0, baseAmount - discountAmount);
+      // If user calls create-invoice without promo_code, PRESERVE the existing promo they already applied
+      let currentPromoId = promoCodeId;
+      let currentDiscount = discountAmount;
+
+      if (!promo_code && existingPending.promo_code_id) {
+        currentPromoId = existingPending.promo_code_id;
+        currentDiscount = existingPending.discount_amount || 0;
+      }
+
+      const finalBaseAmount = Math.max(0, baseAmount - currentDiscount);
       const totalAmount = finalBaseAmount === 0 ? 0 : finalBaseAmount + existingPending.unique_code;
+
+      // Extend deadline by 24 hours so frontend doesn't see it as expired
+      const newDeadline = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
       const updatePayload: any = {
         total_amount: totalAmount,
-        status: totalAmount === 0 ? 'valid' : 'pending',
+        deadline: newDeadline,
+        status: totalAmount === 0 ? 'paid' : 'pending',
       };
 
-      if (promoCodeId) {
-        updatePayload.promo_code_id = promoCodeId;
-        updatePayload.discount_amount = discountAmount;
+      if (currentPromoId) {
+        updatePayload.promo_code_id = currentPromoId;
+        updatePayload.discount_amount = currentDiscount;
       }
 
       const { data: updatedInvoice, error: updateError } = await supabase
@@ -156,7 +169,7 @@ Deno.serve(async (req: Request) => {
         unique_code: uniqueCode,
         total_amount: totalAmount,
         deadline,
-        status: totalAmount === 0 ? 'valid' : 'pending',
+        status: totalAmount === 0 ? 'paid' : 'pending',
       };
 
       if (promoCodeId) {
@@ -172,6 +185,18 @@ Deno.serve(async (req: Request) => {
 
       if (insertError) throw insertError;
       invoice = newInvoice;
+    }
+
+    if (invoice.total_amount === 0) {
+      const newExpiry = new Date();
+      newExpiry.setDate(newExpiry.getDate() + 30);
+      await supabase
+        .from("tenants")
+        .update({
+          plan: invoice.plan_id,
+          plan_expires_at: newExpiry.toISOString(),
+        })
+        .eq("id", tenant_id);
     }
 
     // Audit log
