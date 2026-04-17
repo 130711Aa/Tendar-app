@@ -5,7 +5,6 @@ import { useTenantContext } from '../context/TenantContext'
 import { createInvoice, applyPromoToInvoice, uploadReceiptAndProcess, formatIDR, getActiveInvoice } from '../lib/billing'
 import { supabase } from '../lib/supabase'
 
-// ── Plan definitions ──────────────────────────────────────────────────
 const PLANS = [
   {
     id: 'free',
@@ -18,26 +17,26 @@ const PLANS = [
   {
     id: 'starter',
     name: 'Starter',
-    price: 25000,
+    price: 15000,
     color: 'border-orange-300',
-    badge: null,
+    badge: 'Terjangkau',
     features: ['Hingga 30 produk', 'Kategori & Gambar Produk', 'Online Menu'],
   },
   {
     id: 'business',
     name: 'Business',
-    price: 50000,
+    price: 35000,
     color: 'border-[#ff8c00]/60',
-    badge: 'Terpopuler',
-    features: ['Produk tak terbatas', '2 Akses Staff', 'Kasir (POS)', 'Manajemen Stok & Analitik', 'Export CSV'],
+    badge: 'Populer',
+    features: ['Produk Tak Terbatas', 'Kasir (POS) & Analitik', 'Manajemen Stok Dasar', 'Export CSV Data'],
   },
   {
     id: 'pro',
     name: 'Pro',
-    price: 100000,
-    color: 'border-[#ff8c00]',
-    badge: 'Lengkap',
-    features: ['Resep (BoM)', 'Staff tak terbatas', 'Export Excel', 'Prioritas Support'],
+    price: 60000,
+    color: 'border-[#ff8c00] border-[3px]',
+    badge: 'Terbaik',
+    features: ['Resep & BoM', 'Staff Tak Terbatas', 'Export Laporan Excel', 'Prioritas Dukungan'],
   },
 ]
 

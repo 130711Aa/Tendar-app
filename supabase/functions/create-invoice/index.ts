@@ -7,9 +7,9 @@ const corsHeaders = {
 
 // Plan prices in IDR
 const PLAN_PRICES: Record<string, number> = {
-  starter:  25000,
-  business: 50000,
-  pro:      100000,
+  starter:  15000,
+  business: 35000,
+  pro:      60000,
 };
 
 Deno.serve(async (req: Request) => {

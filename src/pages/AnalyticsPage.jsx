@@ -20,10 +20,6 @@ export default function AnalyticsPage() {
     const [customers, setCustomers] = useState([])
     const [forecast, setForecast] = useState({ predicted_revenue: 0, predicted_transactions: 0 })
 
-    // Reset Modal
-    const [showResetModal, setShowResetModal] = useState(false)
-    const [resetting, setResetting] = useState(false)
-
     useEffect(() => {
         if (tenantId) fetchAnalytics()
     }, [tenantId])
@@ -65,7 +61,7 @@ export default function AnalyticsPage() {
         }
     }
 
-    const handleExportAndReset = async () => {
+    const handleExport = async () => {
         if (!planLimits.exportCsv && !planLimits.exportExcel) {
             alert('Fitur Export terkunci. Silakan upgrade paket Anda ke Business atau Pro.')
             return
@@ -124,53 +120,34 @@ export default function AnalyticsPage() {
             // 3. Create Workbook
             const wb = XLSX.utils.book_new()
 
-            const wsSummary = XLSX.utils.json_to_sheet(summarySheet)
-            XLSX.utils.book_append_sheet(wb, wsSummary, "Summary")
+            if (planLimits.exportExcel) {
+                // EXCEL EXPORT (PRO PLAN): Multi-sheet
+                const wsSummary = XLSX.utils.json_to_sheet(summarySheet)
+                XLSX.utils.book_append_sheet(wb, wsSummary, "Summary")
 
-            const wsProducts = XLSX.utils.json_to_sheet(products)
-            XLSX.utils.book_append_sheet(wb, wsProducts, "Product Performance")
+                const wsProducts = XLSX.utils.json_to_sheet(products)
+                XLSX.utils.book_append_sheet(wb, wsProducts, "Product Performance")
 
-            const wsSales = XLSX.utils.json_to_sheet(salesTrend)
-            XLSX.utils.book_append_sheet(wb, wsSales, "Sales Trend")
+                const wsSales = XLSX.utils.json_to_sheet(salesTrend)
+                XLSX.utils.book_append_sheet(wb, wsSales, "Sales Trend")
 
-            const wsRaw = XLSX.utils.json_to_sheet(flattenedOrders)
-            XLSX.utils.book_append_sheet(wb, wsRaw, "All Transactions")
+                const wsRaw = XLSX.utils.json_to_sheet(flattenedOrders)
+                XLSX.utils.book_append_sheet(wb, wsRaw, "All Transactions")
 
-            // 4. Save File
-            XLSX.writeFile(wb, `KareemJuice_Uncut_Report_${new Date().toISOString().split('T')[0]}.xlsx`)
-
-            // 5. Trigger Reset Modal
-            setShowResetModal(true)
+                // Save as XLSX
+                XLSX.writeFile(wb, `KareemJuice_Report_${new Date().toISOString().split('T')[0]}.xlsx`)
+            } else {
+                // CSV EXPORT (BUSINESS PLAN): Single sheet (Raw Data)
+                const wsRaw = XLSX.utils.json_to_sheet(flattenedOrders)
+                XLSX.utils.book_append_sheet(wb, wsRaw, "All Transactions")
+                
+                // Save as CSV
+                XLSX.writeFile(wb, `KareemJuice_Report_${new Date().toISOString().split('T')[0]}.csv`, { bookType: 'csv' })
+            }
 
         } catch (err) {
             console.error('Export failed:', err)
             alert('Export failed. Please try again.')
-        }
-    }
-
-    const confirmReset = async () => {
-        setResetting(true)
-        try {
-            // Delete all orders. Cascades to order_items usually, but we'll see.
-            // Safe delete: verify we are NOT touching products/categories
-
-            // Delete order_items first to be safe if no cascade
-            await supabase.from('order_items').delete().neq('id', 0)
-
-            // Delete orders
-            const { error } = await supabase.from('orders').delete().neq('id', 0)
-
-            if (error) throw error
-
-            alert('Database has been reset successfully.')
-            setShowResetModal(false)
-            fetchAnalytics() // Refresh (should be empty)
-
-        } catch (err) {
-            console.error('Reset failed:', err)
-            alert('Reset failed: ' + err.message)
-        } finally {
-            setResetting(false)
         }
     }
 
@@ -210,11 +187,11 @@ export default function AnalyticsPage() {
                         Print / PDF
                     </button>
                     <button
-                        onClick={handleExportAndReset}
+                        onClick={handleExport}
                         className="flex items-center gap-2 px-4 py-2 bg-stone-800 text-white rounded-lg hover:bg-stone-900 transition-colors shadow-sm font-medium text-sm"
                     >
                         <Download className="w-4 h-4" />
-                        Export & Reset
+                        Export Data
                     </button>
                 </div>
             </div>
@@ -268,39 +245,6 @@ export default function AnalyticsPage() {
                     <CustomerTable data={customers} />
                 </div>
             </div>
-
-            {/* Reset Confirmation Modal */}
-            {showResetModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 print:hidden">
-                    <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
-                        <div className="flex items-center gap-3 text-red-600 mb-4">
-                            <AlertTriangle className="w-8 h-8" />
-                            <h3 className="text-xl font-bold">Reset Database?</h3>
-                        </div>
-                        <p className="text-stone-600 mb-6">
-                            File Excel telah diunduh. <br /><br />
-                            Apakah Anda yakin ingin <strong>MENGHAPUS SEMUA DATA PENJUALAN</strong> dari database? <br />
-                            Tindakan ini tidak dapat dibatalkan. Menu dan Kategori <strong>TIDAK</strong> akan terhapus.
-                        </p>
-                        <div className="flex justify-end gap-3">
-                            <button
-                                onClick={() => setShowResetModal(false)}
-                                className="px-4 py-2 text-stone-600 font-medium hover:bg-stone-50 rounded-lg"
-                                disabled={resetting}
-                            >
-                                Batal
-                            </button>
-                            <button
-                                onClick={confirmReset}
-                                className="px-4 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 flex items-center gap-2"
-                                disabled={resetting}
-                            >
-                                {resetting ? 'Menghapus...' : 'Ya, Hapus Semua'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     )
 }
