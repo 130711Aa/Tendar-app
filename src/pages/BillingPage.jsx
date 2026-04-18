@@ -28,7 +28,7 @@ const PLANS = [
     price: 35000,
     color: 'border-[#ff8c00]/60',
     badge: 'Populer',
-    features: ['Produk Tak Terbatas', 'Kasir (POS) & Analitik', 'Manajemen Stok Dasar', 'Export CSV Data'],
+    features: ['Produk Tak Terbatas', 'Kasir (POS) & Analitik', 'Manajemen Stok Dasar', 'Export Transaksi (Excel)'],
   },
   {
     id: 'pro',
@@ -39,6 +39,13 @@ const PLANS = [
     features: ['Resep & BoM', 'Staff Tak Terbatas', 'Export Laporan Excel', 'Prioritas Dukungan'],
   },
 ]
+
+const PLAN_TIER = {
+  free: 0,
+  starter: 1,
+  business: 2,
+  pro: 3
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────
 function getDaysRemaining(expiresAt) {
@@ -395,8 +402,8 @@ function QRISModal({ invoice: initialInvoice, planPriceBase, planName, onClose, 
                     onDrop={onDrop}
                     onClick={() => fileRef.current?.click()}
                     className={`border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-all ${dragOver
-                        ? 'border-[#ff8c00] bg-orange-50'
-                        : 'border-slate-200 hover:border-[#ff8c00]/50 hover:bg-orange-50/30'
+                      ? 'border-[#ff8c00] bg-orange-50'
+                      : 'border-slate-200 hover:border-[#ff8c00]/50 hover:bg-orange-50/30'
                       }`}
                   >
                     <span className="material-symbols-outlined text-[28px] text-slate-400">upload</span>
@@ -487,6 +494,8 @@ export default function BillingPage() {
   const [activeInvoice, setActiveInvoice] = useState(null)
   const [selectedPlan, setSelectedPlan] = useState(null)
   const [showModal, setShowModal] = useState(false)
+
+  const tenantTier = PLAN_TIER[tenantPlan] ?? 0
 
   // Fetch expiry
   useEffect(() => {
@@ -631,69 +640,76 @@ export default function BillingPage() {
 
       {/* Plan cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {PLANS.map(p => (
-          <div
-            key={p.id}
-            className={`relative bg-white border-2 ${p.color} ${tenantPlan === p.id ? 'bg-orange-50/40 ring-2 ring-[#ff8c00]/30' : ''} p-5 rounded-3xl flex flex-col shadow-sm hover:shadow-md transition-shadow`}
-          >
-            {tenantPlan === p.id && (
-              <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-emerald-500 text-white text-[10px] px-3 py-1 rounded-full font-black tracking-widest shadow-sm">
-                PAKET AKTIF
-              </span>
-            )}
-            {p.badge && tenantPlan !== p.id && (
-              <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#ff8c00] text-white text-[10px] px-3 py-1 rounded-full font-black tracking-widest shadow-sm">
-                {p.badge}
-              </span>
-            )}
-            <h3 className="font-bold text-slate-700 text-lg">{p.name}</h3>
-            <p className="mt-1 border-b border-slate-100 pb-4">
-              <span className="text-3xl font-extrabold text-[#181510] tracking-tight">
-                {p.price === 0 ? 'Gratis' : formatIDR(p.price)}
-              </span>
-              {p.price > 0 && <span className="text-slate-400 text-sm font-medium">/bln</span>}
-            </p>
-            <ul className="mt-4 mb-6 space-y-3 flex-1">
-              {p.features.map((f, i) => (
-                <li key={i} className="flex gap-2 text-sm text-slate-600 font-medium">
-                  <span className="material-symbols-outlined text-emerald-500 text-[18px]">check_circle</span>
-                  <span className="leading-tight pt-0.5">{f}</span>
-                </li>
-              ))}
-            </ul>
+        {PLANS.map(p => {
+          const pTier = PLAN_TIER[p.id] ?? 0
+          const isDowngrade = pTier < tenantTier
 
-            {/* CTA Button */}
-            {p.id !== 'free' && tenantPlan !== p.id && (
-              <button
-                onClick={() => handleSelectPlan(p)}
-                disabled={loadingPlan !== null}
-                className="w-full bg-[#ff8c00] disabled:bg-slate-300 text-white py-3 rounded-xl font-bold hover:bg-[#e07800] transition-colors flex justify-center items-center gap-2 shadow-lg shadow-[#ff8c00]/20 active:scale-[0.98]"
-              >
-                {loadingPlan === p.id ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                    Memuat...
-                  </>
-                ) : (
-                  <>
-                    <span className="material-symbols-outlined text-[18px]">qr_code_2</span>
-                    Bayar via QRIS
-                  </>
-                )}
-              </button>
-            )}
-            {p.id === 'free' && tenantPlan !== p.id && (
-              <button disabled className="w-full bg-slate-50 text-slate-400 py-3 rounded-xl font-bold cursor-not-allowed border border-slate-200">
-                Downgrade via CS
-              </button>
-            )}
-            {tenantPlan === p.id && (
-              <button disabled className="w-full bg-emerald-50 text-emerald-600 border border-emerald-200 py-3 rounded-xl font-bold cursor-not-allowed">
-                Sedang Digunakan
-              </button>
-            )}
-          </div>
-        ))}
+          return (
+            <div
+              key={p.id}
+              className={`relative bg-white border-2 ${p.color} ${tenantPlan === p.id ? 'bg-orange-50/40 ring-2 ring-[#ff8c00]/30' : ''} p-5 rounded-3xl flex flex-col shadow-sm hover:shadow-md transition-shadow`}
+            >
+              {tenantPlan === p.id && (
+                <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-emerald-500 text-white text-[10px] px-3 py-1 rounded-full font-black tracking-widest shadow-sm">
+                  PAKET AKTIF
+                </span>
+              )}
+              {p.badge && tenantPlan !== p.id && (
+                <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#ff8c00] text-white text-[10px] px-3 py-1 rounded-full font-black tracking-widest shadow-sm">
+                  {p.badge}
+                </span>
+              )}
+              <h3 className="font-bold text-slate-700 text-lg">{p.name}</h3>
+              <p className="mt-1 border-b border-slate-100 pb-4">
+                <span className="text-3xl font-extrabold text-[#181510] tracking-tight">
+                  {p.price === 0 ? 'Gratis' : formatIDR(p.price)}
+                </span>
+                {p.price > 0 && <span className="text-slate-400 text-sm font-medium">/bln</span>}
+              </p>
+              <ul className="mt-4 mb-6 space-y-3 flex-1">
+                {p.features.map((f, i) => (
+                  <li key={i} className="flex gap-2 text-sm text-slate-600 font-medium">
+                    <span className="material-symbols-outlined text-emerald-500 text-[18px]">check_circle</span>
+                    <span className="leading-tight pt-0.5">{f}</span>
+                  </li>
+                ))}
+              </ul>
+
+              {/* CTA Button */}
+              {tenantPlan === p.id && (
+                <button disabled className="w-full bg-emerald-50 text-emerald-600 border border-emerald-200 py-3 rounded-xl font-bold cursor-not-allowed">
+                  Sedang Digunakan
+                </button>
+              )}
+
+              {tenantPlan !== p.id && isDowngrade && (
+                <button disabled className="w-full bg-slate-50 text-slate-400 py-3 rounded-xl font-bold cursor-not-allowed border border-slate-200 flex justify-center items-center">
+                  <span className="material-symbols-outlined text-[24px]">lock</span>
+                </button>
+              )}
+
+              {tenantPlan !== p.id && !isDowngrade && (
+                <button
+                  onClick={() => handleSelectPlan(p)}
+                  disabled={loadingPlan !== null}
+                  className="w-full bg-[#ff8c00] disabled:bg-slate-300 text-white py-3 rounded-xl font-bold hover:bg-[#e07800] transition-colors flex justify-center items-center gap-2 shadow-lg shadow-[#ff8c00]/20 active:scale-[0.98]"
+                >
+                  {loadingPlan === p.id ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                      Memuat...
+                    </>
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined text-[18px]">qr_code_2</span>
+                      Bayar via QRIS
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+          )
+        })}
       </div>
 
       {/* How it works */}

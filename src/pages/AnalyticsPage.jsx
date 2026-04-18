@@ -11,7 +11,7 @@ import { useTenantContext } from '../context/TenantContext'
 import { Link } from 'react-router-dom'
 
 export default function AnalyticsPage() {
-    const { tenantId, slug, planLimits } = useTenantContext()
+    const { tenantId, tenantName, slug, planLimits } = useTenantContext()
     const [loading, setLoading] = useState(true)
     const [summary, setSummary] = useState({ total_revenue: 0, total_orders: 0, overall_aov: 0 })
     const [products, setProducts] = useState([])
@@ -119,6 +119,7 @@ export default function AnalyticsPage() {
 
             // 3. Create Workbook
             const wb = XLSX.utils.book_new()
+            const safeName = tenantName ? tenantName.replace(/[^a-zA-Z0-9]/g, '_') : 'Tendar'
 
             if (planLimits.exportExcel) {
                 // EXCEL EXPORT (PRO PLAN): Multi-sheet
@@ -135,14 +136,14 @@ export default function AnalyticsPage() {
                 XLSX.utils.book_append_sheet(wb, wsRaw, "All Transactions")
 
                 // Save as XLSX
-                XLSX.writeFile(wb, `KareemJuice_Report_${new Date().toISOString().split('T')[0]}.xlsx`)
+                XLSX.writeFile(wb, `${safeName}_Report_${new Date().toISOString().split('T')[0]}.xlsx`)
             } else {
-                // CSV EXPORT (BUSINESS PLAN): Single sheet (Raw Data)
+                // BASIC EXPORT (BUSINESS PLAN): Single sheet (Raw Data)
                 const wsRaw = XLSX.utils.json_to_sheet(flattenedOrders)
                 XLSX.utils.book_append_sheet(wb, wsRaw, "All Transactions")
                 
-                // Save as CSV
-                XLSX.writeFile(wb, `KareemJuice_Report_${new Date().toISOString().split('T')[0]}.csv`, { bookType: 'csv' })
+                // Save as XLSX
+                XLSX.writeFile(wb, `${safeName}_Report_${new Date().toISOString().split('T')[0]}.xlsx`)
             }
 
         } catch (err) {
@@ -176,7 +177,7 @@ export default function AnalyticsPage() {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 print:hidden">
                 <div>
                     <h1 className="text-2xl font-bold text-stone-800">Business Dashboard</h1>
-                    <p className="text-stone-500 text-sm">Overview performa bisnis Kareem Juice</p>
+                    <p className="text-stone-500 text-sm">Overview performa bisnis {tenantName}</p>
                 </div>
                 <div className="flex gap-3">
                     <button
