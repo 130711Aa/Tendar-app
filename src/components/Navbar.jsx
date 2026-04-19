@@ -94,6 +94,7 @@ function AdminNavbar() {
         { to: `/${slug}/admin/inventory`, label: 'Stok Bahan' },
         { to: `/${slug}/admin/analytics`, label: 'Analytics' },
         { to: `/${slug}/admin/share`, label: 'Bagikan Toko' },
+        { to: `/${slug}/admin/receipt`, label: 'Desain Struk' },
     ]
 
     const isOwner = user?.id === tenantOwnerId
@@ -160,7 +161,7 @@ function AdminNavbar() {
                     <div className="px-6 pt-6 pb-2">
                         <p className="text-[10px] font-bold text-[#181510]/40 uppercase tracking-widest">Management</p>
                     </div>
-                    {navLinks.filter(l => l.label === 'Kelola Staff' || l.label === 'Langganan' || l.label === 'Analytics' || l.label === 'Bagikan Toko').map(link => {
+                            {navLinks.filter(l => l.label === 'Kelola Staff' || l.label === 'Langganan' || l.label === 'Analytics' || l.label === 'Bagikan Toko' || l.label === 'Desain Struk').map(link => {
                         const isActive = link.exact
                             ? location.pathname === link.to
                             : location.pathname.startsWith(link.to)
@@ -179,7 +180,8 @@ function AdminNavbar() {
                                     <span className="material-symbols-outlined text-xl">
                                         {link.label === 'Kelola Staff' ? 'badge' : 
                                          link.label === 'Analytics' ? 'analytics' : 
-                                         link.label === 'Bagikan Toko' ? 'qr_code_2' : 'card_membership'}
+                                         link.label === 'Bagikan Toko' ? 'qr_code_2' :
+                                         link.label === 'Desain Struk' ? 'print' : 'card_membership'}
                                     </span>
                                     <span className="text-[13px]">{link.label}</span>
                                 </div>
@@ -310,7 +312,7 @@ function AdminNavbar() {
                                     ? location.pathname === link.to
                                     : location.pathname.startsWith(link.to)
 
-                                if (link.label === 'Kelola Staff' || link.label === 'Langganan' || link.label === 'Analytics' || link.label === 'Bagikan Toko') return null;
+                                if (link.label === 'Kelola Staff' || link.label === 'Langganan' || link.label === 'Analytics' || link.label === 'Bagikan Toko' || link.label === 'Desain Struk') return null;
 
                                 return (
                                     <Link
@@ -346,7 +348,7 @@ function AdminNavbar() {
                             <div className="px-6 pt-6 pb-2">
                                 <p className="text-[10px] font-bold text-[#181510]/40 uppercase tracking-widest">Management</p>
                             </div>
-                            {navLinks.filter(l => l.label === 'Kelola Staff' || l.label === 'Langganan' || l.label === 'Analytics' || l.label === 'Bagikan Toko').map(link => {
+                                    {navLinks.filter(l => l.label === 'Kelola Staff' || l.label === 'Langganan' || l.label === 'Analytics' || l.label === 'Bagikan Toko' || l.label === 'Desain Struk').map(link => {
                                 const isActive = link.exact
                                     ? location.pathname === link.to
                                     : location.pathname.startsWith(link.to)
@@ -366,7 +368,8 @@ function AdminNavbar() {
                                             <span className="material-symbols-outlined text-xl">
                                             {link.label === 'Kelola Staff' ? 'badge' : 
                                              link.label === 'Analytics' ? 'analytics' : 
-                                             link.label === 'Bagikan Toko' ? 'qr_code_2' : 'card_membership'}
+                                             link.label === 'Bagikan Toko' ? 'qr_code_2' :
+                                             link.label === 'Desain Struk' ? 'print' : 'card_membership'}
                                             </span>
                                             <span className="text-[13px]">{link.label}</span>
                                         </div>

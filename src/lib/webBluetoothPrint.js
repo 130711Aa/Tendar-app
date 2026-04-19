@@ -148,6 +148,7 @@ export function disconnectPrinter() {
     printerCharacteristic = null
 }
 
+
 /**
  * Send raw bytes to the connected printer in chunks.
  * BLE has a max payload of ~20 bytes per write, so we chunk it.
@@ -171,18 +172,38 @@ async function sendBytes(data) {
 }
 
 /**
- * Print an order receipt directly via Web Bluetooth.
- * The printer must already be connected via connectPrinter().
- * @param {Object} order — order object
- * @param {string} tenantName - The store name
+ * Send pre-built ESC/POS bytes directly to the connected printer.
+ * Use this when you want full control over the receipt bytes (e.g. in
+ * ReceiptDesignerPage where you want to print with the current unsaved layout).
+ * @param {Uint8Array} data
  */
-export async function printOrderDirect(order, tenantName = 'Toko Saya') {
+export async function sendRawBytes(data) {
+    if (!isConnected()) {
+        throw new Error('Printer belum terhubung. Klik tombol "Hubungkan Printer" terlebih dahulu.')
+    }
+    console.log(`[WebBT] Sending ${data.length} raw bytes...`)
+    await sendBytes(data)
+    console.log('[WebBT] ✅ Done.')
+}
+
+/**
+ * Print an order receipt directly via Web Bluetooth.
+ * Uses the saved layoutConfig from PrinterContext.
+ * The printer must already be connected via connectPrinter().
+ *
+ * @param {Object} order           - Order object from the API
+ * @param {string} tenantName      - The store name (fallback header)
+ * @param {Object} [layoutConfig]  - Layout/visibility preferences. Falls back to
+ *                                   legacy 32-char layout when null/undefined.
+ */
+export async function printOrderDirect(order, tenantName = 'Toko Saya', layoutConfig = null) {
     if (!isConnected()) {
         throw new Error('Printer belum terhubung. Klik tombol "Hubungkan Printer" terlebih dahulu.')
     }
 
-    const receiptBytes = buildReceiptBytes(order, tenantName)
+    const receiptBytes = buildReceiptBytes(order, tenantName, layoutConfig)
     console.log(`[WebBT] Sending ${receiptBytes.length} bytes to printer...`)
     await sendBytes(receiptBytes)
     console.log('[WebBT] ✅ Print complete!')
 }
+
