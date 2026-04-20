@@ -12,6 +12,10 @@ function CustomerNavbar() {
     const { totalItems, setIsOpen } = useCart()
     const { slug, tenantName } = useTenantContext()
 
+    const firstName = user?.user_metadata?.name?.split(' ')[0] || 'Akun'
+    const avatarUrl = user?.user_metadata?.avatar_url || null
+    const initial = (user?.user_metadata?.name || user?.email || 'A').charAt(0).toUpperCase()
+
     return (
         <header className="flex items-center justify-between whitespace-nowrap border-b border-[#ff8c00]/10 px-4 md:px-8 py-3 bg-white/90 backdrop-blur-md sticky top-0 z-40">
             <Link to={`/${slug}`} className="flex items-center gap-3 text-[#181510]">
@@ -26,16 +30,29 @@ function CustomerNavbar() {
 
             <div className="flex items-center gap-2">
                 {user ? (
-                    <div className="flex items-center gap-1.5">
-                        <span className="hidden md:inline text-sm font-medium text-neutral-600 mr-1">
-                            Hi, {user.user_metadata?.name?.split(' ')[0] || 'Kak'}
-                        </span>
-                        <Link to={`/${slug}/orders`} className="size-10 flex items-center justify-center bg-[#ff8c00]/10 hover:bg-[#ff8c00]/20 text-[#ff8c00] rounded-xl transition-colors" title="Pesanan Saya">
+                    <div className="flex items-center gap-2">
+                        <Link
+                            to={`/${slug}/orders`}
+                            className="size-10 flex items-center justify-center bg-[#ff8c00]/10 hover:bg-[#ff8c00]/20 text-[#ff8c00] rounded-xl transition-colors"
+                            title="Pesanan Saya"
+                        >
                             <span className="material-symbols-outlined text-[20px]">receipt_long</span>
                         </Link>
-                        <Link to={`/${slug}/profile`} className="size-10 flex items-center justify-center bg-purple-50 hover:bg-purple-100 text-purple-500 rounded-xl transition-colors" title="Profil Saya">
-                            <span className="material-symbols-outlined text-[20px]">person</span>
-                        </Link>
+                        <div
+                            className="flex items-center gap-2 bg-white border border-neutral-200 pl-1 pr-3 py-1 rounded-xl group"
+                            title="Akun Anda"
+                        >
+                            {avatarUrl ? (
+                                <img src={avatarUrl} alt="avatar" className="size-8 rounded-lg object-cover" />
+                            ) : (
+                                <div className="size-8 bg-gradient-to-br from-[#ff8c00] to-[#e67e00] rounded-lg flex items-center justify-center text-white text-xs font-black shadow-sm">
+                                    {initial}
+                                </div>
+                            )}
+                            <span className="hidden sm:block text-xs font-bold text-neutral-600 max-w-[80px] truncate">
+                                {firstName}
+                            </span>
+                        </div>
                         <button
                             onClick={logout}
                             className="size-10 flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-500 rounded-xl transition-colors"
@@ -103,6 +120,10 @@ function AdminNavbar() {
         navLinks.push({ to: `/${slug}/admin/billing`, label: 'Langganan' })
     }
 
+    const avatarUrl = user?.user_metadata?.avatar_url || null
+    const initial = (user?.user_metadata?.name || user?.email || 'A').charAt(0).toUpperCase()
+    const firstName = user?.user_metadata?.name?.split(' ')[0] || 'Admin'
+
     return (
         <>
             {/* Desktop Sidebar */}
@@ -126,7 +147,7 @@ function AdminNavbar() {
                             ? location.pathname === link.to
                             : location.pathname.startsWith(link.to)
 
-                        if (link.label === 'Kelola Staff' || link.label === 'Langganan' || link.label === 'Analytics' || link.label === 'Bagikan Toko') return null;
+                        if (link.label === 'Kelola Staff' || link.label === 'Langganan' || link.label === 'Analytics' || link.label === 'Bagikan Toko' || link.label === 'Desain Struk') return null;
 
                         return (
                             <Link
@@ -191,6 +212,24 @@ function AdminNavbar() {
                 </nav>
 
                 <div className="pt-6 border-t border-[#ff8c00]/10 mx-6 bg-white shrink-0 mt-4">
+                    {/* Profile shortcut */}
+                    <Link
+                        to={`/${slug}/admin/profile`}
+                        className="flex items-center gap-3 py-2.5 px-3 hover:bg-[#ff8c00]/5 rounded-xl transition-all group mb-1"
+                    >
+                        {avatarUrl ? (
+                            <img src={avatarUrl} alt="avatar" className="size-8 rounded-lg object-cover shrink-0" />
+                        ) : (
+                            <div className="size-8 bg-gradient-to-br from-[#ff8c00] to-[#e67e00] rounded-lg flex items-center justify-center text-white text-xs font-black shadow-sm shrink-0">
+                                {initial}
+                            </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                            <p className="text-[13px] font-bold text-[#181510] group-hover:text-[#ff8c00] transition-colors truncate">{firstName}</p>
+                            <p className="text-[10px] text-neutral-400 truncate">{user?.email}</p>
+                        </div>
+                        <span className="material-symbols-outlined text-[16px] text-neutral-300 group-hover:text-[#ff8c00] transition-colors">chevron_right</span>
+                    </Link>
                     <Link to={`/${slug}`} className="flex items-center gap-3 py-2.5 px-3 text-[#181510] hover:text-[#ff8c00] hover:bg-neutral-50 rounded-xl transition-all">
                         <span className="material-symbols-outlined text-[20px] text-[#181510]/60">storefront</span>
                         <span className="text-[13px] font-bold">Lihat Toko</span>
@@ -275,9 +314,22 @@ function AdminNavbar() {
                         <span className="hidden sm:inline">Mode Kasir</span>
                     </button>
                     
-                    <div className="hidden lg:flex w-10 h-10 rounded-full bg-[#fcfaf8] border border-[#ff8c00]/20 items-center justify-center text-[#ff8c00] font-bold ml-1 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]">
-                        {user?.user_metadata?.name?.charAt(0).toUpperCase() || 'A'}
-                    </div>
+                    <Link
+                        to={`/${slug}/admin/profile`}
+                        className="hidden lg:flex items-center gap-2 bg-white border border-neutral-200 hover:border-[#ff8c00]/30 hover:bg-[#ff8c00]/5 pl-1 pr-3 py-1 rounded-xl transition-all group ml-1"
+                        title="Profil & Akun"
+                    >
+                        {avatarUrl ? (
+                            <img src={avatarUrl} alt="avatar" className="size-8 rounded-lg object-cover" />
+                        ) : (
+                            <div className="size-8 bg-gradient-to-br from-[#ff8c00] to-[#e67e00] rounded-lg flex items-center justify-center text-white text-xs font-black shadow-sm">
+                                {initial}
+                            </div>
+                        )}
+                        <span className="text-xs font-bold text-neutral-600 group-hover:text-[#ff8c00] transition-colors max-w-[80px] truncate">
+                            {firstName}
+                        </span>
+                    </Link>
                 </div>
             </header>
 

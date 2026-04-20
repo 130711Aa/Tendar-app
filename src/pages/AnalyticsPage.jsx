@@ -19,7 +19,7 @@ export default function AnalyticsPage() {
     const [salesTrend, setSalesTrend] = useState([])
     const [customers, setCustomers] = useState([])
     const [forecast, setForecast] = useState({ predicted_revenue: 0, predicted_transactions: 0 })
-
+    const [revenueTrend, setRevenueTrend] = useState({ value: 0, trend: 'neutral' })
     useEffect(() => {
         if (tenantId) fetchAnalytics()
     }, [tenantId])
@@ -53,6 +53,44 @@ export default function AnalyticsPage() {
                 predicted_revenue: forecastData.predicted_revenue_tomorrow || 0,
                 predicted_transactions: forecastData.predicted_transactions_tomorrow || 0
             })
+
+            // Calculate Real Trend (Last 30 Days vs Previous 30 Days)
+            const now = new Date()
+            const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+            const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000)
+
+            const { data: currentPeriodData } = await supabase
+                .from('orders')
+                .select('total_amount')
+                .eq('tenant_id', tenantId)
+                .neq('status', 'cancelled')
+                .gte('created_at', thirtyDaysAgo.toISOString())
+
+            const { data: previousPeriodData } = await supabase
+                .from('orders')
+                .select('total_amount')
+                .eq('tenant_id', tenantId)
+                .neq('status', 'cancelled')
+                .gte('created_at', sixtyDaysAgo.toISOString())
+                .lt('created_at', thirtyDaysAgo.toISOString())
+
+            const currentRevenue = currentPeriodData?.reduce((sum, order) => sum + order.total_amount, 0) || 0
+            const previousRevenue = previousPeriodData?.reduce((sum, order) => sum + order.total_amount, 0) || 0
+
+            let computedTrendValue = 0
+            let computedTrendStatus = 'neutral'
+            
+            if (previousRevenue > 0) {
+                const diff = currentRevenue - previousRevenue
+                computedTrendValue = Number(((diff / previousRevenue) * 100).toFixed(1))
+                computedTrendStatus = computedTrendValue > 0 ? 'up' : computedTrendValue < 0 ? 'down' : 'neutral'
+                computedTrendValue = Math.abs(computedTrendValue)
+            } else if (currentRevenue > 0) {
+                computedTrendValue = 100
+                computedTrendStatus = 'up'
+            }
+            
+            setRevenueTrend({ value: computedTrendValue, trend: computedTrendStatus })
 
         } catch (err) {
             console.error('Error fetching analytics:', err)
@@ -203,7 +241,8 @@ export default function AnalyticsPage() {
                     title="Total Revenue"
                     value={`Rp ${summary.total_revenue?.toLocaleString('id-ID') || 0}`}
                     iconName="dollar"
-                    trend="up"
+                    trend={revenueTrend.trend}
+                    trendValue={revenueTrend.value}
                 />
                 <KPICard
                     title="Total Orders"

@@ -1,6 +1,6 @@
 import { ArrowUpRight, ArrowDownRight, DollarSign, ShoppingBag, Users, Activity } from 'lucide-react'
 
-export default function KPICard({ title, value, subtext, iconName = 'activity', trend = 'neutral' }) {
+export default function KPICard({ title, value, subtext, iconName = 'activity', trend = 'neutral', trendValue }) {
     const icons = {
         dollar: <DollarSign className="w-5 h-5 text-emerald-600" />,
         bag: <ShoppingBag className="w-5 h-5 text-blue-600" />,
@@ -20,11 +20,11 @@ export default function KPICard({ title, value, subtext, iconName = 'activity', 
                 <div className="p-3 bg-stone-50 rounded-xl">
                     {icons[iconName] || icons.activity}
                 </div>
-                {trend !== 'neutral' && (
+                {trend !== 'neutral' && trendValue !== undefined && (
                     <div className={`flex items-center text-xs font-medium px-2 py-1 rounded-full ${trend === 'up' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
                         }`}>
                         {trends[trend]}
-                        <span>{trend === 'up' ? '+2.5%' : '-1.2%'}</span>
+                        <span>{trendValue}%</span>
                     </div>
                 )}
             </div>

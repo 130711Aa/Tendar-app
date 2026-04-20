@@ -106,7 +106,6 @@ function TenantAppContent() {
                         <Route path="" element={<MenuPage />} />
                         <Route path="auth" element={<AuthPage />} />
                         <Route path="orders" element={<CustomerOrdersPage />} />
-                        <Route path="profile" element={<ProfilePage />} />
 
                         {/* Admin (all protected) */}
                         <Route path="admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
@@ -120,6 +119,7 @@ function TenantAppContent() {
                         <Route path="admin/staff" element={<ProtectedRoute><StaffManagement /></ProtectedRoute>} />
                         <Route path="admin/share" element={<ProtectedRoute><ShareLinkPage /></ProtectedRoute>} />
                         <Route path="admin/receipt" element={<ProtectedRoute><ReceiptDesignerPage /></ProtectedRoute>} />
+                        <Route path="admin/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
                         <Route path="admin/login" element={<Navigate to={`/${slug}/auth`} replace />} />
 
                         {/* POS */}
