@@ -17,13 +17,13 @@ export default function ProfilePage() {
     const [resetEmailSent, setResetEmailSent] = useState(false)
     const [recentOrders, setRecentOrders] = useState([])
     const [ordersLoading, setOrdersLoading] = useState(false)
+    const [hasPassword, setHasPassword] = useState(false)
+    const [checkingPassword, setCheckingPassword] = useState(true)
 
     const metadata = user?.user_metadata || {}
     const identities = user?.identities || []
-    const isGoogleUser = identities.some(i => i.provider === 'google')
-    const hasPassword = identities.some(i => i.provider === 'email')
-    // isGoogleUser && !hasPassword → hanya Google, belum punya password Tendar
-    // isGoogleUser && hasPassword  → Google + sudah punya password Tendar
+    const providers = user?.app_metadata?.providers || []
+    const isGoogleUser = providers.includes('google') || identities.some(i => i.provider === 'google')
     const isGoogleOnly = isGoogleUser && !hasPassword
 
     const [editName, setEditName] = useState(metadata.name || '')
@@ -37,8 +37,31 @@ export default function ProfilePage() {
     const initial = (metadata.name || user?.email || 'U').charAt(0).toUpperCase()
 
     useEffect(() => {
-        if (user && activeTab === 'orders') fetchRecentOrders()
+        if (user) {
+            if (activeTab === 'orders') fetchRecentOrders()
+            if (activeTab === 'security') checkPasswordStatus()
+        }
     }, [user, activeTab])
+
+    const checkPasswordStatus = async () => {
+        if(!user) return;
+        setCheckingPassword(true)
+        
+        // 1. Cek dari JWT session metadata (fallback cepat)
+        const providers = user?.app_metadata?.providers || []
+        const idents = user?.identities || []
+        const hasEmailLocal = providers.includes('email') || idents.some(i => i.provider === 'email')
+
+        // 2. Cek kebenaran mutlak dari database (karena Supabase tidak update Session secara realtime saat pasang password)
+        const { data, error } = await supabase.rpc('has_password_set')
+        
+        if (!error && data !== null) {
+            setHasPassword(data)
+        } else {
+            setHasPassword(hasEmailLocal)
+        }
+        setCheckingPassword(false)
+    }
 
     const fetchRecentOrders = async () => {
         if (!user) return
@@ -262,33 +285,41 @@ export default function ProfilePage() {
                     {/* ── TAB: SECURITY ── */}
                     {activeTab === 'security' && (
                         <div className="lg:col-span-2 space-y-4">
-                            <div className={`rounded-2xl border p-5 ${isGoogleOnly ? 'bg-blue-50/50 border-blue-100' : isGoogleUser ? 'bg-gradient-to-r from-blue-50/50 to-[#ff8c00]/5 border-blue-100' : 'bg-white border-stone-100 shadow-sm'}`}>
-                                <div className="flex items-start gap-3">
-                                    <div className={`size-10 rounded-xl flex items-center justify-center shrink-0 ${isGoogleOnly ? 'bg-blue-100' : isGoogleUser ? 'bg-gradient-to-br from-blue-100 to-[#ff8c00]/20' : 'bg-[#ff8c00]/10'}`}>
-                                        <span className={`material-symbols-outlined text-[20px] ${isGoogleOnly ? 'text-blue-500' : isGoogleUser ? 'text-[#ff8c00]' : 'text-[#ff8c00]'}`}>{isGoogleUser ? 'account_circle' : 'lock'}</span>
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-bold text-stone-800">
-                                            {isGoogleOnly ? 'Akun Google' : isGoogleUser ? 'Google + Password Tendar' : 'Email & Password'}
-                                        </p>
-                                        <p className="text-xs text-stone-500 mt-0.5 leading-relaxed">
-                                            {isGoogleOnly
-                                                ? 'Kamu login menggunakan Google. Keamanan akunmu dikelola langsung oleh Google.'
-                                                : isGoogleUser
-                                                ? 'Akunmu terhubung ke Google dan juga memiliki password Tendar. Kamu bisa login dengan kedua cara.'
-                                                : 'Kamu login menggunakan email dan password.'}
-                                        </p>
-                                        {isGoogleUser && hasPassword && (
-                                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full mt-1.5">
-                                                <span className="material-symbols-outlined text-[12px]">check_circle</span>
-                                                Password Tendar aktif
-                                            </span>
-                                        )}
-                                    </div>
+                            {checkingPassword ? (
+                                <div className="bg-white rounded-2xl border border-stone-100 p-10 flex flex-col items-center justify-center text-center shadow-sm">
+                                    <span className="material-symbols-outlined text-[#ff8c00] animate-spin text-4xl mb-4">progress_activity</span>
+                                    <p className="font-bold text-stone-800">Mengecek Status Keamanan</p>
+                                    <p className="text-sm text-stone-500 mt-1">Sistem sedang memeriksa data login Anda...</p>
                                 </div>
-                            </div>
+                            ) : (
+                                <>
+                                    <div className={`rounded-2xl border p-5 ${isGoogleOnly ? 'bg-blue-50/50 border-blue-100' : isGoogleUser ? 'bg-gradient-to-r from-blue-50/50 to-[#ff8c00]/5 border-blue-100' : 'bg-white border-stone-100 shadow-sm'}`}>
+                                        <div className="flex items-start gap-3">
+                                            <div className={`size-10 rounded-xl flex items-center justify-center shrink-0 ${isGoogleOnly ? 'bg-blue-100' : isGoogleUser ? 'bg-gradient-to-br from-blue-100 to-[#ff8c00]/20' : 'bg-[#ff8c00]/10'}`}>
+                                                <span className={`material-symbols-outlined text-[20px] ${isGoogleOnly ? 'text-blue-500' : isGoogleUser ? 'text-[#ff8c00]' : 'text-[#ff8c00]'}`}>{isGoogleUser ? 'account_circle' : 'lock'}</span>
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-bold text-stone-800">
+                                                    {isGoogleOnly ? 'Akun Google' : isGoogleUser ? 'Google + Password Tendar' : 'Email & Password'}
+                                                </p>
+                                                <p className="text-xs text-stone-500 mt-0.5 leading-relaxed">
+                                                    {isGoogleOnly
+                                                        ? 'Kamu login menggunakan Google. Keamanan akunmu dikelola langsung oleh Google.'
+                                                        : isGoogleUser
+                                                        ? 'Akunmu terhubung ke Google dan juga memiliki password Tendar. Kamu bisa login dengan kedua cara.'
+                                                        : 'Kamu login menggunakan email dan password.'}
+                                                </p>
+                                                {isGoogleUser && hasPassword && (
+                                                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full mt-1.5">
+                                                        <span className="material-symbols-outlined text-[12px]">check_circle</span>
+                                                        Password Tendar aktif
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
 
-                            {isGoogleOnly ? (
+                                    {isGoogleOnly ? (
                                 <div className="bg-white rounded-2xl border border-stone-100 shadow-sm overflow-hidden">
                                     <div className="px-6 pt-5 pb-3">
                                         <p className="font-bold text-stone-800">Lupa Sandi</p>
@@ -400,8 +431,8 @@ export default function ProfilePage() {
                                                 </button>
                                             )}
                                         </div>
-                                    </div>
-                                </div>
+                                    )}
+                                </>
                             )}
                         </div>
                     )}
