@@ -431,11 +431,13 @@ export default function ProfilePage() {
                                                 </button>
                                             )}
                                         </div>
-                                    )}
-                                </>
+                                    </div>
+                                </div>
                             )}
-                        </div>
+                        </>
                     )}
+                </div>
+            )}
 
                     {/* ── TAB: ORDERS ── */}
                     {activeTab === 'orders' && (
