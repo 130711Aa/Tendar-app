@@ -19,7 +19,12 @@ export default function ProfilePage() {
     const [ordersLoading, setOrdersLoading] = useState(false)
 
     const metadata = user?.user_metadata || {}
-    const isGoogleUser = user?.app_metadata?.provider === 'google'
+    const identities = user?.identities || []
+    const isGoogleUser = identities.some(i => i.provider === 'google')
+    const hasPassword = identities.some(i => i.provider === 'email')
+    // isGoogleUser && !hasPassword → hanya Google, belum punya password Tendar
+    // isGoogleUser && hasPassword  → Google + sudah punya password Tendar
+    const isGoogleOnly = isGoogleUser && !hasPassword
 
     const [editName, setEditName] = useState(metadata.name || '')
     const [editPhone, setEditPhone] = useState(metadata.phone || '')
@@ -257,21 +262,33 @@ export default function ProfilePage() {
                     {/* ── TAB: SECURITY ── */}
                     {activeTab === 'security' && (
                         <div className="lg:col-span-2 space-y-4">
-                            <div className={`rounded-2xl border p-5 ${isGoogleUser ? 'bg-blue-50/50 border-blue-100' : 'bg-white border-stone-100 shadow-sm'}`}>
+                            <div className={`rounded-2xl border p-5 ${isGoogleOnly ? 'bg-blue-50/50 border-blue-100' : isGoogleUser ? 'bg-gradient-to-r from-blue-50/50 to-[#ff8c00]/5 border-blue-100' : 'bg-white border-stone-100 shadow-sm'}`}>
                                 <div className="flex items-start gap-3">
-                                    <div className={`size-10 rounded-xl flex items-center justify-center shrink-0 ${isGoogleUser ? 'bg-blue-100' : 'bg-[#ff8c00]/10'}`}>
-                                        <span className={`material-symbols-outlined text-[20px] ${isGoogleUser ? 'text-blue-500' : 'text-[#ff8c00]'}`}>{isGoogleUser ? 'account_circle' : 'lock'}</span>
+                                    <div className={`size-10 rounded-xl flex items-center justify-center shrink-0 ${isGoogleOnly ? 'bg-blue-100' : isGoogleUser ? 'bg-gradient-to-br from-blue-100 to-[#ff8c00]/20' : 'bg-[#ff8c00]/10'}`}>
+                                        <span className={`material-symbols-outlined text-[20px] ${isGoogleOnly ? 'text-blue-500' : isGoogleUser ? 'text-[#ff8c00]' : 'text-[#ff8c00]'}`}>{isGoogleUser ? 'account_circle' : 'lock'}</span>
                                     </div>
                                     <div>
-                                        <p className="text-sm font-bold text-stone-800">{isGoogleUser ? 'Akun Google' : 'Email & Password'}</p>
-                                        <p className="text-xs text-stone-500 mt-0.5 leading-relaxed">
-                                            {isGoogleUser ? 'Kamu login menggunakan Google. Keamanan akunmu dikelola langsung oleh Google.' : 'Kamu login menggunakan email dan password.'}
+                                        <p className="text-sm font-bold text-stone-800">
+                                            {isGoogleOnly ? 'Akun Google' : isGoogleUser ? 'Google + Password Tendar' : 'Email & Password'}
                                         </p>
+                                        <p className="text-xs text-stone-500 mt-0.5 leading-relaxed">
+                                            {isGoogleOnly
+                                                ? 'Kamu login menggunakan Google. Keamanan akunmu dikelola langsung oleh Google.'
+                                                : isGoogleUser
+                                                ? 'Akunmu terhubung ke Google dan juga memiliki password Tendar. Kamu bisa login dengan kedua cara.'
+                                                : 'Kamu login menggunakan email dan password.'}
+                                        </p>
+                                        {isGoogleUser && hasPassword && (
+                                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full mt-1.5">
+                                                <span className="material-symbols-outlined text-[12px]">check_circle</span>
+                                                Password Tendar aktif
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
                             </div>
 
-                            {isGoogleUser ? (
+                            {isGoogleOnly ? (
                                 <div className="bg-white rounded-2xl border border-stone-100 shadow-sm overflow-hidden">
                                     <div className="px-6 pt-5 pb-3">
                                         <p className="font-bold text-stone-800">Lupa Sandi</p>
@@ -297,6 +314,42 @@ export default function ProfilePage() {
                                             </button>
                                         )}
                                     </div>
+                                </div>
+                            ) : isGoogleUser && hasPassword ? (
+                                // Google user yang sudah punya password Tendar → langsung form ganti password
+                                <div className="bg-white rounded-2xl border border-stone-100 shadow-sm overflow-hidden">
+                                    <div className="px-6 pt-5 pb-3">
+                                        <p className="font-bold text-stone-800">Ganti Password Tendar</p>
+                                        <p className="text-xs text-stone-500 mt-1">Kamu sudah punya password Tendar. Masukkan password baru di bawah ini.</p>
+                                    </div>
+                                    <form onSubmit={handleChangePassword} className="px-6 pb-5 space-y-3">
+                                        <div>
+                                            <label className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">Password Baru</label>
+                                            <div className="relative mt-1">
+                                                <input type={showNewPw ? 'text' : 'password'} value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="minimal 6 karakter" className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-[#ff8c00]/30 outline-none pr-11" />
+                                                <button type="button" onClick={() => setShowNewPw(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-[#ff8c00]">
+                                                    <span className="material-symbols-outlined text-lg">{showNewPw ? 'visibility_off' : 'visibility'}</span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">Konfirmasi Password</label>
+                                            <div className="relative mt-1">
+                                                <input type={showConfirmPw ? 'text' : 'password'} value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="ulangi password baru" className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-[#ff8c00]/30 outline-none pr-11" />
+                                                <button type="button" onClick={() => setShowConfirmPw(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-[#ff8c00]">
+                                                    <span className="material-symbols-outlined text-lg">{showConfirmPw ? 'visibility_off' : 'visibility'}</span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        {newPassword && confirmPassword && newPassword !== confirmPassword && (
+                                            <p className="text-xs text-red-500 font-medium flex items-center gap-1">
+                                                <span className="material-symbols-outlined text-sm">error</span>Password tidak cocok
+                                            </p>
+                                        )}
+                                        <button type="submit" disabled={saving || !newPassword || !confirmPassword} className="w-full bg-[#ff8c00] text-white font-bold py-3 rounded-xl hover:bg-[#e67e00] transition-all shadow-lg shadow-[#ff8c00]/20 disabled:opacity-60 text-sm">
+                                            {saving ? 'Menyimpan...' : 'Simpan Password Baru'}
+                                        </button>
+                                    </form>
                                 </div>
                             ) : (
                                 <div className="bg-white rounded-2xl border border-stone-100 shadow-sm overflow-hidden">
