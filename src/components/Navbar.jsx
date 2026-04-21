@@ -38,9 +38,10 @@ function CustomerNavbar() {
                         >
                             <span className="material-symbols-outlined text-[20px]">receipt_long</span>
                         </Link>
-                        <div
-                            className="flex items-center gap-2 bg-white border border-neutral-200 pl-1 pr-3 py-1 rounded-xl group"
-                            title="Akun Anda"
+                        <Link
+                            to={`/${slug}/admin/profile`}
+                            className="flex items-center gap-2 bg-white border border-neutral-200 pl-1 pr-3 py-1 rounded-xl group hover:border-[#ff8c00]/30 hover:bg-[#ff8c00]/5 transition-all"
+                            title="Profil & Akun"
                         >
                             {avatarUrl ? (
                                 <img src={avatarUrl} alt="avatar" className="size-8 rounded-lg object-cover" />
@@ -49,10 +50,10 @@ function CustomerNavbar() {
                                     {initial}
                                 </div>
                             )}
-                            <span className="hidden sm:block text-xs font-bold text-neutral-600 max-w-[80px] truncate">
+                            <span className="hidden sm:block text-xs font-bold text-neutral-600 group-hover:text-[#ff8c00] transition-colors max-w-[80px] truncate">
                                 {firstName}
                             </span>
-                        </div>
+                        </Link>
                         <button
                             onClick={logout}
                             className="size-10 flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-500 rounded-xl transition-colors"
@@ -313,23 +314,6 @@ function AdminNavbar() {
                         <span className="material-symbols-outlined text-[18px]">point_of_sale</span>
                         <span className="hidden sm:inline">Mode Kasir</span>
                     </button>
-                    
-                    <Link
-                        to={`/${slug}/admin/profile`}
-                        className="hidden lg:flex items-center gap-2 bg-white border border-neutral-200 hover:border-[#ff8c00]/30 hover:bg-[#ff8c00]/5 pl-1 pr-3 py-1 rounded-xl transition-all group ml-1"
-                        title="Profil & Akun"
-                    >
-                        {avatarUrl ? (
-                            <img src={avatarUrl} alt="avatar" className="size-8 rounded-lg object-cover" />
-                        ) : (
-                            <div className="size-8 bg-gradient-to-br from-[#ff8c00] to-[#e67e00] rounded-lg flex items-center justify-center text-white text-xs font-black shadow-sm">
-                                {initial}
-                            </div>
-                        )}
-                        <span className="text-xs font-bold text-neutral-600 group-hover:text-[#ff8c00] transition-colors max-w-[80px] truncate">
-                            {firstName}
-                        </span>
-                    </Link>
                 </div>
             </header>
 
