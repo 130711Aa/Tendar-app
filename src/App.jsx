@@ -106,6 +106,7 @@ function TenantAppContent() {
                         <Route path="" element={<MenuPage />} />
                         <Route path="auth" element={<AuthPage />} />
                         <Route path="orders" element={<CustomerOrdersPage />} />
+                        <Route path="profile" element={<ProfilePage />} />
 
                         {/* Admin (all protected) */}
                         <Route path="admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />

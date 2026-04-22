@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useCart } from '../context/CartContext'
 import { useAuth } from '../context/AuthContext'
 import { useOrders } from '../context/OrdersContext'
@@ -10,7 +10,19 @@ import { BrandIcon } from './BrandLogo'
 function CustomerNavbar() {
     const { user, logout } = useAuth()
     const { totalItems, setIsOpen } = useCart()
-    const { slug, tenantName } = useTenantContext()
+    const { slug, tenantName, isTenantAdmin, isTenantStaff } = useTenantContext()
+    const [isProfileOpen, setIsProfileOpen] = useState(false)
+    const dropdownRef = useRef(null)
+
+    useEffect(() => {
+        function handleClickOutside(event) {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setIsProfileOpen(false)
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside)
+        return () => document.removeEventListener("mousedown", handleClickOutside)
+    }, [])
 
     const firstName = user?.user_metadata?.name?.split(' ')[0] || 'Akun'
     const avatarUrl = user?.user_metadata?.avatar_url || null
@@ -28,20 +40,13 @@ function CustomerNavbar() {
                 </div>
             </Link>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 relative">
                 {user ? (
-                    <div className="flex items-center gap-2">
-                        <Link
-                            to={`/${slug}/orders`}
-                            className="size-10 flex items-center justify-center bg-[#ff8c00]/10 hover:bg-[#ff8c00]/20 text-[#ff8c00] rounded-xl transition-colors"
-                            title="Pesanan Saya"
-                        >
-                            <span className="material-symbols-outlined text-[20px]">receipt_long</span>
-                        </Link>
-                        <Link
-                            to={`/${slug}/admin/profile`}
-                            className="flex items-center gap-2 bg-white border border-neutral-200 pl-1 pr-3 py-1 rounded-xl group hover:border-[#ff8c00]/30 hover:bg-[#ff8c00]/5 transition-all"
-                            title="Profil & Akun"
+                    <div className="relative" ref={dropdownRef}>
+                        <button
+                            onClick={() => setIsProfileOpen(!isProfileOpen)}
+                            className="flex items-center gap-2 bg-white border border-neutral-200 pl-1 pr-3 py-1 rounded-xl group hover:border-[#ff8c00]/30 hover:bg-[#ff8c00]/5 transition-all outline-none focus:ring-2 focus:ring-[#ff8c00]/20"
+                            title="Menu Akun"
                         >
                             {avatarUrl ? (
                                 <img src={avatarUrl} alt="avatar" className="size-8 rounded-lg object-cover" />
@@ -53,14 +58,62 @@ function CustomerNavbar() {
                             <span className="hidden sm:block text-xs font-bold text-neutral-600 group-hover:text-[#ff8c00] transition-colors max-w-[80px] truncate">
                                 {firstName}
                             </span>
-                        </Link>
-                        <button
-                            onClick={logout}
-                            className="size-10 flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-500 rounded-xl transition-colors"
-                            title="Keluar"
-                        >
-                            <span className="material-symbols-outlined text-[20px]">logout</span>
+                            <span className="material-symbols-outlined text-[16px] text-neutral-400 group-hover:text-[#ff8c00] transition-colors">
+                                expand_more
+                            </span>
                         </button>
+
+                        {/* Dropdown Menu */}
+                        {isProfileOpen && (
+                            <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-neutral-200 py-2 z-50 animate-fade-in-up origin-top-right">
+                                <div className="px-4 py-3 border-b border-neutral-100 mb-2">
+                                    <p className="text-sm font-bold text-neutral-800 truncate">{user?.user_metadata?.name || 'Pelanggan'}</p>
+                                    <p className="text-xs text-neutral-500 truncate">{user?.email}</p>
+                                </div>
+                                
+                                <Link 
+                                    to={`/${slug}/profile`}
+                                    onClick={() => setIsProfileOpen(false)}
+                                    className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-neutral-600 hover:text-[#ff8c00] hover:bg-neutral-50 transition-colors"
+                                >
+                                    <span className="material-symbols-outlined text-[20px]">manage_accounts</span>
+                                    Pengaturan Profil
+                                </Link>
+
+                                <Link 
+                                    to={`/${slug}/orders`}
+                                    onClick={() => setIsProfileOpen(false)}
+                                    className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-neutral-600 hover:text-[#ff8c00] hover:bg-neutral-50 transition-colors"
+                                >
+                                    <span className="material-symbols-outlined text-[20px]">receipt_long</span>
+                                    Pesanan Saya
+                                </Link>
+
+                                {(isTenantAdmin || isTenantStaff) && (
+                                    <Link 
+                                        to={`/${slug}/admin`}
+                                        onClick={() => setIsProfileOpen(false)}
+                                        className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-neutral-600 hover:text-[#ff8c00] hover:bg-neutral-50 transition-colors"
+                                    >
+                                        <span className="material-symbols-outlined text-[20px]">dashboard</span>
+                                        Masuk ke Admin
+                                    </Link>
+                                )}
+
+                                <div className="h-px bg-neutral-100 my-2"></div>
+
+                                <button 
+                                    onClick={() => {
+                                        setIsProfileOpen(false)
+                                        logout()
+                                    }}
+                                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-red-500 hover:bg-red-50 transition-colors"
+                                >
+                                    <span className="material-symbols-outlined text-[20px]">logout</span>
+                                    Keluar Akun
+                                </button>
+                            </div>
+                        )}
                     </div>
                 ) : (
                     <Link
@@ -76,7 +129,7 @@ function CustomerNavbar() {
                     className="relative flex items-center gap-2 bg-[#ff8c00] hover:bg-[#e67e00] text-white px-4 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg shadow-[#ff8c00]/20 active:scale-95"
                 >
                     <span className="material-symbols-outlined text-[20px]">shopping_cart</span>
-                    <span className="hidden sm:inline">Keranjang</span>
+                    <span className="hidden md:inline">Keranjang</span>
                     {totalItems > 0 && (
                         <span className="absolute -top-2 -right-2 size-6 bg-red-500 text-white rounded-full text-[11px] font-bold flex items-center justify-center badge-pulse shadow-md">
                             {totalItems}
