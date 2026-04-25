@@ -4,6 +4,7 @@ import { useProducts } from '../context/ProductsContext'
 import { formatRupiah } from '../lib/utils'
 import toast from 'react-hot-toast'
 import { useTenantContext } from '../context/TenantContext'
+import { uploadProductImage, deleteProductImage, compressImage } from '../lib/imageUtils'
 
 export default function MenuManagement() {
     const { products, toggleStock, deleteProduct, updateProduct, addProduct } = useProducts()
@@ -18,6 +19,8 @@ export default function MenuManagement() {
     const fileInputRef = useRef(null)
     const [addForm, setAddForm] = useState({ name: '', description: '', price: '', category: '' })
 
+    const [isUploading, setIsUploading] = useState(false)
+
     const handleAddSubmit = async (e) => {
         e.preventDefault()
         if (products.length >= planLimits.maxProducts) {
@@ -25,13 +28,28 @@ export default function MenuManagement() {
             return
         }
         if (!addForm.name.trim() || !addForm.price || !addForm.category) return
+
+        let finalImageUrl = ''
+        if (imageFile) {
+            setIsUploading(true)
+            try {
+                finalImageUrl = await uploadProductImage(imageFile, tenantId)
+            } catch (err) {
+                toast.error(`Gagal upload gambar: ${err.message}`)
+                setIsUploading(false)
+                return
+            } finally {
+                setIsUploading(false)
+            }
+        }
+
         const result = await addProduct({
             name: addForm.name.trim(),
             description: addForm.description.trim(),
             price: Number(addForm.price),
             category: addForm.category,
-            image_url: imagePreview || '',
-            stock_status: true, // Default menu baru selalu tersedia
+            image_url: finalImageUrl,
+            stock_status: true,
         })
         if (result) {
             toast.success(`"${addForm.name}" berhasil ditambahkan!`)
@@ -68,30 +86,57 @@ export default function MenuManagement() {
         if (editFileInputRef.current) editFileInputRef.current.value = ''
     }
 
+    const [editImageFile, setEditImageFile] = useState(null)
+
     const handleEditImage = (e) => {
         const file = e.target.files?.[0]
         if (!file) return
         if (!file.type.startsWith('image/')) { alert('File harus berupa gambar'); return }
-        if (file.size > 5 * 1024 * 1024) { alert('Ukuran file maksimal 5MB'); return }
-        const reader = new FileReader()
-        reader.onload = (ev) => {
-            setEditImagePreview(ev.target.result)
-            setEditForm(f => ({ ...f, image_url: ev.target.result }))
-        }
-        reader.readAsDataURL(file)
+        if (file.size > 10 * 1024 * 1024) { alert('Ukuran file maksimal 10MB'); return }
+
+        setEditImageFile(file)
+        // Buat preview lokal — compress dulu untuk preview agar responsif
+        compressImage(file).then(blob => {
+            const previewUrl = URL.createObjectURL(blob)
+            setEditImagePreview(previewUrl)
+        }).catch(() => {
+            // Fallback ke FileReader jika compress gagal
+            const reader = new FileReader()
+            reader.onload = (ev) => setEditImagePreview(ev.target.result)
+            reader.readAsDataURL(file)
+        })
     }
 
-    const handleEditSubmit = (e) => {
+    const handleEditSubmit = async (e) => {
         e.preventDefault()
+
+        let finalImageUrl = editForm.image_url
+
+        if (editImageFile) {
+            setIsUploading(true)
+            try {
+                // Hapus gambar lama dari Storage (aman jika masih base64)
+                await deleteProductImage(editProduct.image_url)
+                finalImageUrl = await uploadProductImage(editImageFile, tenantId)
+            } catch (err) {
+                toast.error(`Gagal upload gambar: ${err.message}`)
+                setIsUploading(false)
+                return
+            } finally {
+                setIsUploading(false)
+            }
+        }
+
         updateProduct(editProduct.id, {
             name: editForm.name,
             description: editForm.description,
             price: Number(editForm.price),
             category: editForm.category,
-            image_url: editForm.image_url,
+            image_url: finalImageUrl,
         })
         toast.success(`"${editForm.name}" berhasil diperbarui!`)
         closeEditModal()
+        setEditImageFile(null)
     }
 
     const handleImageSelect = (e) => {
@@ -101,14 +146,19 @@ export default function MenuManagement() {
             alert('File harus berupa gambar (JPG, PNG, WebP)')
             return
         }
-        if (file.size > 5 * 1024 * 1024) {
-            alert('Ukuran file maksimal 5MB')
+        if (file.size > 10 * 1024 * 1024) {
+            alert('Ukuran file maksimal 10MB')
             return
         }
         setImageFile(file)
-        const reader = new FileReader()
-        reader.onload = (ev) => setImagePreview(ev.target.result)
-        reader.readAsDataURL(file)
+        // Buat preview lokal dengan versi terkompresi
+        compressImage(file).then(blob => {
+            setImagePreview(URL.createObjectURL(blob))
+        }).catch(() => {
+            const reader = new FileReader()
+            reader.onload = (ev) => setImagePreview(ev.target.result)
+            reader.readAsDataURL(file)
+        })
     }
 
     const clearImage = () => {
@@ -411,9 +461,22 @@ export default function MenuManagement() {
                                     </div>
                                 )}
                             </div>
-                            <button type="submit" className="w-full bg-[#ff8c00] text-white py-3.5 rounded-xl font-bold text-base hover:bg-[#e67e00] transition-all shadow-lg shadow-[#ff8c00]/20 flex items-center justify-center gap-2">
-                                <span className="material-symbols-outlined">add_circle</span>
-                                Simpan Menu
+                            <button
+                                type="submit"
+                                disabled={isUploading}
+                                className="w-full bg-[#ff8c00] text-white py-3.5 rounded-xl font-bold text-base hover:bg-[#e67e00] transition-all shadow-lg shadow-[#ff8c00]/20 flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                            >
+                                {isUploading ? (
+                                    <>
+                                        <span className="material-symbols-outlined animate-spin text-lg">progress_activity</span>
+                                        Mengupload gambar...
+                                    </>
+                                ) : (
+                                    <>
+                                        <span className="material-symbols-outlined">add_circle</span>
+                                        Simpan Menu
+                                    </>
+                                )}
                             </button>
                         </form>
                     </div>
@@ -520,9 +583,22 @@ export default function MenuManagement() {
                                     </div>
                                 )}
                             </div>
-                            <button type="submit" className="w-full bg-[#ff8c00] text-white py-3.5 rounded-xl font-bold text-base hover:bg-[#e67e00] transition-all shadow-lg shadow-[#ff8c00]/20 flex items-center justify-center gap-2">
-                                <span className="material-symbols-outlined">save</span>
-                                Simpan Perubahan
+                            <button
+                                type="submit"
+                                disabled={isUploading}
+                                className="w-full bg-[#ff8c00] text-white py-3.5 rounded-xl font-bold text-base hover:bg-[#e67e00] transition-all shadow-lg shadow-[#ff8c00]/20 flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                            >
+                                {isUploading ? (
+                                    <>
+                                        <span className="material-symbols-outlined animate-spin text-lg">progress_activity</span>
+                                        Mengupload gambar...
+                                    </>
+                                ) : (
+                                    <>
+                                        <span className="material-symbols-outlined">save</span>
+                                        Simpan Perubahan
+                                    </>
+                                )}
                             </button>
                         </form>
                     </div>

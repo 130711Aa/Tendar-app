@@ -301,7 +301,7 @@ export default function LandingPage() {
         { name: 'Free', price: '0', color: 'border-slate-200', badge: '', features: ['Hingga 10 produk', '1 Akses Staff', 'Online Menu'] },
         { name: 'Starter', price: '15K', color: 'border-orange-300', badge: 'Terjangkau', features: ['Hingga 30 produk', 'Kategori & Gambar Produk', 'Online Menu'] },
         { name: 'Business', price: '35K', color: 'border-orange-400', badge: 'Populer', features: ['Produk Tak Terbatas', 'Kasir (POS) & Analitik', 'Manajemen Stok Dasar', 'Export Transaksi (Excel)'] },
-        { name: 'Pro', price: '60K', color: 'border-[#ff8c00] border-[3px]', badge: 'Terbaik', features: ['Resep & BoM', 'Staff Tak Terbatas', 'Export Laporan Excel', 'Prioritas Dukungan'] },
+        { name: 'Pro', price: '50K', color: 'border-[#ff8c00] border-[3px]', badge: 'Terbaik', features: ['Resep & BoM', 'Staff Tak Terbatas', 'Export Laporan Excel', 'Prioritas Dukungan'] },
     ]
 
     return (
@@ -360,7 +360,7 @@ export default function LandingPage() {
                         Buka Toko Gratis →
                     </button>
                     <button
-                        onClick={() => navigate('/kareem-juice')}
+                        onClick={() => navigate('/dummy')}
                         className="border-2 border-slate-200 text-slate-600 px-8 py-3.5 rounded-full font-semibold text-base hover:border-slate-300 transition-all"
                     >
                         Lihat Demo

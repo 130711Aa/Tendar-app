@@ -33,7 +33,7 @@ const PLANS = [
   {
     id: 'pro',
     name: 'Pro',
-    price: 60000,
+    price: 50000,
     color: 'border-[#ff8c00] border-[3px]',
     badge: 'Terbaik',
     features: ['Resep & BoM', 'Staff Tak Terbatas', 'Export Laporan Excel', 'Prioritas Dukungan'],
