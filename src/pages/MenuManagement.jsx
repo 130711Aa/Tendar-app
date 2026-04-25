@@ -8,7 +8,7 @@ import { uploadProductImage, deleteProductImage, compressImage } from '../lib/im
 
 export default function MenuManagement() {
     const { products, toggleStock, deleteProduct, updateProduct, addProduct } = useProducts()
-    const { slug, planLimits } = useTenantContext()
+    const { slug, planLimits, tenantId } = useTenantContext()
     const [searchQuery, setSearchQuery] = useState('')
     const [selectedCategory, setSelectedCategory] = useState('Semua')
     const [sortBy, setSortBy] = useState('default')
