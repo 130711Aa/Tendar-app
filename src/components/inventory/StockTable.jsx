@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import AddMaterialForm from './AddMaterialForm'
 import { useTenantContext } from '../../context/TenantContext'
+import toast from 'react-hot-toast'
 
 export default function StockTable() {
     const { tenantId } = useTenantContext()
     const [materials, setMaterials] = useState([])
     const [loading, setLoading] = useState(true)
     const [showAddModal, setShowAddModal] = useState(false)
+    const [editingMaterial, setEditingMaterial] = useState(null)
 
     useEffect(() => {
         if (tenantId) fetchStock()
@@ -43,21 +45,10 @@ export default function StockTable() {
 
             if (error) throw error
 
-            // Show success toast? The caller usually handles it, but here we are in the component.
-            // Let's assume toast is available globally or we should import it?
-            // Checking imports... toast is not imported in this file yet. I need to add import.
-            // Wait, I can't add import with replace_file_content easily if I'm not careful.
-            // I'll assume I need to add import toast first or just use alert/console if I want to be safe, 
-            // but the user expects nice UI. The previous files used 'react-hot-toast'.
-            // I will add the import in a separate edit or try to include it if I can match the top.
-            // For now, let's just do the logical part and I'll do a separate replace for import if needed.
-            // Actually, I can use window.alert or just refresh. 
-            // Let's try to do it properly. 
-            // I will use two edits: one for import, one for body. 
-
+            toast.success('Bahan baku berhasil dihapus!')
             fetchStock()
         } catch (err) {
-            alert('Gagal menghapus: ' + err.message)
+            toast.error('Gagal menghapus: ' + err.message)
         }
     }
 
@@ -69,7 +60,10 @@ export default function StockTable() {
                 <h3 className="text-lg font-bold text-stone-800">Stok Bahan Baku</h3>
                 <div className="flex gap-2">
                     <button
-                        onClick={() => setShowAddModal(true)}
+                        onClick={() => {
+                            setEditingMaterial(null)
+                            setShowAddModal(true)
+                        }}
                         className="bg-[#ff8c00] hover:bg-[#e67e00] text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors"
                     >
                         <span className="material-symbols-outlined text-lg">add</span>
@@ -92,6 +86,17 @@ export default function StockTable() {
                         fetchStock()
                     }}
                     onCancel={() => setShowAddModal(false)}
+                />
+            )}
+
+            {editingMaterial && (
+                <AddMaterialForm
+                    material={editingMaterial}
+                    onSuccess={() => {
+                        setEditingMaterial(null)
+                        fetchStock()
+                    }}
+                    onCancel={() => setEditingMaterial(null)}
                 />
             )}
 
@@ -134,6 +139,13 @@ export default function StockTable() {
                                         )}
                                     </td>
                                     <td className="px-6 py-4 text-right">
+                                        <button
+                                            onClick={() => setEditingMaterial(item)}
+                                            className="p-2 text-stone-400 hover:text-[#ff8c00] hover:bg-orange-50 rounded-full transition-all"
+                                            title="Edit Bahan"
+                                        >
+                                            <span className="material-symbols-outlined">edit</span>
+                                        </button>
                                         <button
                                             onClick={() => handleDelete(item.id, item.name)}
                                             className="p-2 text-stone-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all"

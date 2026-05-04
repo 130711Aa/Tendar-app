@@ -1,7 +1,7 @@
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
 
-export default function SalesTrendChart({ data }) {
-    // Expects data sorted by date/hour
+export default function SalesTrendChart({ data, period = 'day' }) {
+    const xAngle = period === 'week' ? -18 : 0
 
     if (!data || data.length === 0) {
         return <div className="h-64 flex items-center justify-center text-stone-400">Belum ada data trend penjualan.</div>
@@ -19,11 +19,14 @@ export default function SalesTrendChart({ data }) {
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e5e5" />
                     <XAxis
-                        dataKey="day_name"
+                        dataKey="label"
                         axisLine={false}
                         tickLine={false}
                         tick={{ fill: '#78716c', fontSize: 12 }}
-                        dy={10}
+                        angle={xAngle}
+                        textAnchor={xAngle ? 'end' : 'middle'}
+                        height={period === 'week' ? 56 : 36}
+                        dy={period === 'week' ? 16 : 10}
                     />
                     <YAxis
                         axisLine={false}
@@ -39,6 +42,10 @@ export default function SalesTrendChart({ data }) {
                             boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
                         }}
                         formatter={(value) => [`Rp ${value.toLocaleString('id-ID')}`, 'Pendapatan']}
+                        labelFormatter={(label, payload) => {
+                            const totalOrders = payload?.[0]?.payload?.total_orders || 0
+                            return `${label} - ${totalOrders} transaksi`
+                        }}
                     />
                     <Area
                         type="monotone"

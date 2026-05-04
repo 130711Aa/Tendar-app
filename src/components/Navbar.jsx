@@ -6,6 +6,9 @@ import { useOrders } from '../context/OrdersContext'
 import { usePrinter } from '../context/PrinterContext'
 import { useTenantContext } from '../context/TenantContext'
 import { BrandIcon } from './BrandLogo'
+import toast from 'react-hot-toast'
+
+const ADMIN_UPDATE_NOTICE_KEY = 'tendar_admin_update_notice_inventory_analytics_v1'
 
 function CustomerNavbar() {
     const { user, logout } = useAuth()
@@ -177,6 +180,55 @@ function AdminNavbar() {
     const avatarUrl = user?.user_metadata?.avatar_url || null
     const initial = (user?.user_metadata?.name || user?.email || 'A').charAt(0).toUpperCase()
     const firstName = user?.user_metadata?.name?.split(' ')[0] || 'Admin'
+
+    useEffect(() => {
+        if (localStorage.getItem(ADMIN_UPDATE_NOTICE_KEY)) return
+
+        localStorage.setItem(ADMIN_UPDATE_NOTICE_KEY, 'shown')
+        toast.custom((t) => (
+            <div className={`w-[min(92vw,420px)] rounded-2xl bg-white shadow-2xl border border-orange-100 overflow-hidden transition-all ${t.visible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'}`}>
+                <div className="px-5 py-4 bg-[#fff7ed] border-b border-orange-100 flex items-start gap-3">
+                    <span className="material-symbols-outlined text-[#ff8c00] mt-0.5">campaign</span>
+                    <div className="min-w-0">
+                        <p className="text-sm font-black text-stone-900">Pembaruan aplikasi tersedia</p>
+                        <p className="text-xs text-stone-500 mt-0.5">Beberapa fitur admin sudah diperbarui.</p>
+                    </div>
+                    <button
+                        onClick={() => toast.dismiss(t.id)}
+                        className="ml-auto text-stone-400 hover:text-stone-700"
+                        aria-label="Tutup notifikasi"
+                    >
+                        <span className="material-symbols-outlined text-[20px]">close</span>
+                    </button>
+                </div>
+                <div className="px-5 py-4 text-sm text-stone-700 space-y-2">
+                    <p>Ringkasan perubahan:</p>
+                    <ul className="list-disc pl-5 space-y-1">
+                        <li>Analytics kini bisa dilihat per hari, per minggu, dan per bulan.</li>
+                        <li>Grafik trend penjualan dihitung dari data transaksi asli.</li>
+                        <li>Stok bahan mendukung edit nama bahan dan satuan bebas.</li>
+                        <li>Resep produk mendukung banyak bahan per menu.</li>
+                        <li>Stok bahan otomatis berkurang saat pesanan berstatus selesai.</li>
+                    </ul>
+                    <p className="pt-2 text-xs text-stone-500">
+                        Jika menemukan kendala atau aplikasi error, silakan hubungi pengembang agar bisa segera dibantu.
+                    </p>
+                </div>
+                <div className="px-5 pb-4">
+                    <button
+                        onClick={() => toast.dismiss(t.id)}
+                        className="w-full rounded-xl bg-[#ff8c00] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#e67e00] transition-colors"
+                    >
+                        Saya mengerti
+                    </button>
+                </div>
+            </div>
+        ), {
+            id: ADMIN_UPDATE_NOTICE_KEY,
+            duration: 14000,
+            position: 'top-right'
+        })
+    }, [])
 
     return (
         <>

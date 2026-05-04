@@ -45,6 +45,7 @@ export default function RecipeManager() {
             .select('*, raw_materials(name, unit)')
             .eq('product_id', productId)
             .eq('tenant_id', tenantId)
+            .order('created_at', { ascending: true })
 
         if (!error) setRecipes(data || [])
         setLoading(false)
@@ -56,16 +57,26 @@ export default function RecipeManager() {
 
         setAdding(true)
         try {
-            const { error } = await supabase.from('product_raw_materials').insert({
-                product_id: parseInt(selectedProductId),
-                raw_material_id: parseInt(formMaterialId),
-                quantity_used: parseInt(formQuantity),
-                tenant_id: tenantId
-            })
+            const existingRecipe = recipes.find(recipe => recipe.raw_material_id?.toString() === formMaterialId)
+            const quantity = parseFloat(formQuantity)
+            const { error } = existingRecipe
+                ? await supabase
+                    .from('product_raw_materials')
+                    .update({ quantity_used: quantity })
+                    .eq('id', existingRecipe.id)
+                    .eq('tenant_id', tenantId)
+                : await supabase
+                    .from('product_raw_materials')
+                    .insert({
+                        product_id: parseInt(selectedProductId, 10),
+                        raw_material_id: parseInt(formMaterialId, 10),
+                        quantity_used: quantity,
+                        tenant_id: tenantId
+                    })
 
             if (error) throw error
 
-            toast.success('Bahan berhasil ditambahkan ke resep')
+            toast.success(existingRecipe ? 'Jumlah bahan di resep diperbarui' : 'Bahan berhasil ditambahkan ke resep')
             fetchRecipes(selectedProductId)
             setFormMaterialId('')
             setFormQuantity('')
@@ -93,6 +104,9 @@ export default function RecipeManager() {
         return m ? m.unit : ''
     }
 
+    const selectedProduct = products.find(product => product.id?.toString() === selectedProductId)
+    const usedMaterialIds = new Set(recipes.map(recipe => recipe.raw_material_id?.toString()))
+
     return (
         <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Left: Product Selection & Recipe List */}
@@ -113,11 +127,23 @@ export default function RecipeManager() {
 
                 {selectedProductId && (
                     <div className="bg-stone-50 p-4 rounded-xl border border-stone-100">
-                        <h4 className="font-bold text-stone-800 mb-4">Resep Saat Ini</h4>
+                        <div className="flex items-center justify-between gap-3 mb-4">
+                            <div>
+                                <h4 className="font-bold text-stone-800">Resep Saat Ini</h4>
+                                <p className="text-xs text-stone-500">
+                                    {selectedProduct?.name || 'Menu'} memakai {recipes.length} bahan baku per porsi.
+                                </p>
+                            </div>
+                            <span className="px-3 py-1 bg-white text-[#ff8c00] rounded-full text-xs font-bold border border-orange-100">
+                                {recipes.length} bahan
+                            </span>
+                        </div>
                         {loading ? (
                             <p className="text-stone-400">Memuat resep...</p>
                         ) : recipes.length === 0 ? (
-                            <p className="text-stone-400 italic text-sm">Belum ada resep. Tambahkan bahan baku di panel kanan.</p>
+                            <p className="text-stone-400 italic text-sm">
+                                Belum ada resep. Tambahkan beberapa bahan baku di panel kanan, misalnya mangga, SKM, dan gula untuk satu menu.
+                            </p>
                         ) : (
                             <div className="space-y-2">
                                 {recipes.map(recipe => (
@@ -146,7 +172,10 @@ export default function RecipeManager() {
 
             {/* Right: Add Ingredient Form */}
             <div className="bg-white p-6 rounded-xl border border-stone-100 shadow-sm h-fit">
-                <h3 className="text-lg font-bold text-stone-800 mb-4">Tambah Bahan Baku</h3>
+                <h3 className="text-lg font-bold text-stone-800 mb-1">Tambah Bahan Baku</h3>
+                <p className="text-xs text-stone-500 mb-4">
+                    Tambahkan bahan satu per satu. Satu menu bisa punya banyak bahan.
+                </p>
                 {!selectedProductId ? (
                     <p className="text-stone-400 text-sm">Pilih produk di sebelah kiri terlebih dahulu.</p>
                 ) : (
@@ -161,7 +190,9 @@ export default function RecipeManager() {
                             >
                                 <option value="">-- Pilih Bahan --</option>
                                 {materials.map(m => (
-                                    <option key={m.id} value={m.id}>{m.name} ({m.unit})</option>
+                                    <option key={m.id} value={m.id}>
+                                        {m.name} ({m.unit}){usedMaterialIds.has(m.id.toString()) ? ' - sudah ada, jumlah akan diperbarui' : ''}
+                                    </option>
                                 ))}
                             </select>
                         </div>
@@ -171,6 +202,8 @@ export default function RecipeManager() {
                             </label>
                             <input
                                 type="number"
+                                min="0"
+                                step="any"
                                 value={formQuantity}
                                 onChange={e => setFormQuantity(e.target.value)}
                                 className="w-full p-2 bg-white border border-stone-200 rounded-lg text-sm"
@@ -184,7 +217,7 @@ export default function RecipeManager() {
                             disabled={adding}
                             className="w-full bg-[#ff8c00] text-white font-bold py-2 rounded-lg hover:bg-[#e67e00] transition-colors text-sm"
                         >
-                            {adding ? 'Menambahkan...' : '+ Tambahkan ke Resep'}
+                            {adding ? 'Menyimpan...' : '+ Simpan Bahan Resep'}
                         </button>
                     </form>
                 )}

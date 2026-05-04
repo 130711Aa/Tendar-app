@@ -42,7 +42,7 @@ export default function InventoryPage() {
                     {[
                         { id: 'stock', label: 'Stok Saat Ini', icon: 'inventory_2' },
                         { id: 'opname', label: 'Input Bahan', icon: 'add_circle' },
-                        ...(planLimits?.bomEnabled ? [{ id: 'recipes', label: 'Resep Produk', icon: 'menu_book' }] : []),
+                        { id: 'recipes', label: 'Resep Produk', icon: 'menu_book' },
                         { id: 'movements', label: 'Riwayat', icon: 'history' },
                     ].map(tab => (
                         <button

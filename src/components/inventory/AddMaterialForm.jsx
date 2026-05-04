@@ -3,36 +3,53 @@ import { supabase } from '../../lib/supabase'
 import toast from 'react-hot-toast'
 import { useTenantContext } from '../../context/TenantContext'
 
-export default function AddMaterialForm({ onSuccess, onCancel }) {
-    const [name, setName] = useState('')
-    const [minStock, setMinStock] = useState('')
+export default function AddMaterialForm({ material, onSuccess, onCancel }) {
+    const [name, setName] = useState(material?.name || '')
+    const [unit, setUnit] = useState(material?.unit || '')
+    const [minStock, setMinStock] = useState(material?.minimum_stock?.toString() || '')
     const [loading, setLoading] = useState(false)
     const { tenantId } = useTenantContext()
+    const isEditing = Boolean(material?.id)
 
     const handleSubmit = async (e) => {
         e.preventDefault()
-        if (!name || !minStock || !tenantId) return
+        const cleanName = name.trim()
+        const cleanUnit = unit.trim()
+        if (!cleanName || !cleanUnit || !minStock || !tenantId) return
 
         setLoading(true)
         try {
-            const { error } = await supabase
-                .from('raw_materials')
-                .insert({
-                    name: name,
-                    unit: 'pcs', // Fixed as per user request
-                    minimum_stock: parseInt(minStock),
-                    tenant_id: tenantId
-                })
+            const payload = {
+                name: cleanName,
+                unit: cleanUnit,
+                minimum_stock: parseInt(minStock, 10),
+                tenant_id: tenantId
+            }
+
+            const { error } = isEditing
+                ? await supabase
+                    .from('raw_materials')
+                    .update({
+                        name: payload.name,
+                        unit: payload.unit,
+                        minimum_stock: payload.minimum_stock
+                    })
+                    .eq('id', material.id)
+                    .eq('tenant_id', tenantId)
+                : await supabase
+                    .from('raw_materials')
+                    .insert(payload)
 
             if (error) throw error
 
-            toast.success('Bahan baku berhasil ditambahkan!')
+            toast.success(isEditing ? 'Bahan baku berhasil diperbarui!' : 'Bahan baku berhasil ditambahkan!')
             if (onSuccess) onSuccess()
             setName('')
+            setUnit('')
             setMinStock('')
         } catch (err) {
             console.error(err)
-            toast.error('Gagal menambahkan bahan: ' + err.message)
+            toast.error(`${isEditing ? 'Gagal memperbarui' : 'Gagal menambahkan'} bahan: ${err.message}`)
         } finally {
             setLoading(false)
         }
@@ -42,7 +59,9 @@ export default function AddMaterialForm({ onSuccess, onCancel }) {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 animate-in fade-in zoom-in duration-200">
                 <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-lg font-bold text-stone-800">Tambah Bahan Baku Baru</h3>
+                    <h3 className="text-lg font-bold text-stone-800">
+                        {isEditing ? 'Edit Bahan Baku' : 'Tambah Bahan Baku Baru'}
+                    </h3>
                     <button onClick={onCancel} className="text-stone-400 hover:text-stone-600">
                         <span className="material-symbols-outlined">close</span>
                     </button>
@@ -66,11 +85,13 @@ export default function AddMaterialForm({ onSuccess, onCancel }) {
                             <label className="block text-sm font-bold text-stone-700 mb-2">Satuan</label>
                             <input
                                 type="text"
-                                value="pcs"
-                                disabled
-                                className="w-full p-3 bg-stone-100 border border-stone-200 rounded-xl text-stone-500 font-medium cursor-not-allowed"
+                                value={unit}
+                                onChange={e => setUnit(e.target.value)}
+                                className="w-full p-3 bg-stone-50 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#ff8c00]"
+                                placeholder="pcs, kg, liter"
+                                required
                             />
-                            <p className="text-[10px] text-stone-400 mt-1">Satuan dikunci ke 'pcs'</p>
+                            <p className="text-[10px] text-stone-400 mt-1">Isi bebas sesuai kebutuhan toko</p>
                         </div>
                         <div>
                             <label className="block text-sm font-bold text-stone-700 mb-2">Minimum Stok</label>
