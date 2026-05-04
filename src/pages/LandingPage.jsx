@@ -563,7 +563,7 @@ export default function LandingPage() {
                         Buka Toko Gratis →
                     </button>
                     <button
-                        onClick={() => navigate('/dummy')}
+                        onClick={() => navigate('/demo')}
                         className="border-2 border-slate-200 text-slate-600 px-8 py-3.5 rounded-full font-semibold text-base hover:border-slate-300 transition-all"
                     >
                         Lihat Demo

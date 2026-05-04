@@ -8,7 +8,7 @@ import { useTenantContext } from '../context/TenantContext'
 import { BrandIcon } from './BrandLogo'
 import toast from 'react-hot-toast'
 
-const ADMIN_UPDATE_NOTICE_KEY = 'tendar_admin_update_notice_inventory_analytics_v1'
+const ADMIN_UPDATE_NOTICE_KEY = 'tendar_admin_update_notice_webpush_v2'
 
 function CustomerNavbar() {
     const { user, logout } = useAuth()
@@ -204,11 +204,11 @@ function AdminNavbar() {
                 <div className="px-5 py-4 text-sm text-stone-700 space-y-2">
                     <p>Ringkasan perubahan:</p>
                     <ul className="list-disc pl-5 space-y-1">
+                        <li><strong className="text-stone-800">Baru:</strong> Push Notification aktif! Pelanggan kini menerima notifikasi langsung di HP saat pesanan selesai.</li>
                         <li>Analytics kini bisa dilihat per hari, per minggu, dan per bulan.</li>
                         <li>Grafik trend penjualan dihitung dari data transaksi asli.</li>
-                        <li>Stok bahan mendukung edit nama bahan dan satuan bebas.</li>
-                        <li>Resep produk mendukung banyak bahan per menu.</li>
                         <li>Stok bahan otomatis berkurang saat pesanan berstatus selesai.</li>
+                        <li>Resep produk mendukung banyak bahan per menu.</li>
                     </ul>
                     <p className="pt-2 text-xs text-stone-500">
                         Jika menemukan kendala atau aplikasi error, silakan hubungi pengembang agar bisa segera dibantu.

@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import { useStoreStatus } from '../context/StoreStatusContext'
 import { useTenantContext } from '../context/TenantContext'
 import { formatRupiah } from '../lib/utils'
+import { canUseOrderPushNotifications, subscribeToOrderPushNotifications } from '../lib/orderPushNotifications'
 import toast from 'react-hot-toast'
 
 export default function CheckoutModal({ onClose, onSuccess }) {
@@ -12,7 +13,7 @@ export default function CheckoutModal({ onClose, onSuccess }) {
     const { addOrder } = useOrders()
     const { user } = useAuth()
     const { isStoreOpen } = useStoreStatus()
-    const { tenantName } = useTenantContext()
+    const { tenantId, slug } = useTenantContext()
     const [form, setForm] = useState({
         name: user?.user_metadata?.name || '',
         phone: user?.user_metadata?.phone || '',
@@ -37,7 +38,7 @@ export default function CheckoutModal({ onClose, onSuccess }) {
         setLoading(true)
 
         try {
-            addOrder({
+            const savedOrder = await addOrder({
                 customer_name: form.name,
                 customer_phone: form.phone,
                 customer_address: form.address,
@@ -57,6 +58,24 @@ export default function CheckoutModal({ onClose, onSuccess }) {
                 duration: 5000,
                 style: { borderRadius: '12px', fontFamily: 'Plus Jakarta Sans', fontWeight: 600 },
             })
+            if (savedOrder && canUseOrderPushNotifications()) {
+                try {
+                    const result = await subscribeToOrderPushNotifications({
+                        order: savedOrder,
+                        tenantId,
+                        slug
+                    })
+
+                    if (result.ok) {
+                        toast.success('Notifikasi pesanan aktif. Kami akan kabari saat pesanan selesai.', {
+                            duration: 4000
+                        })
+                    }
+                } catch (pushError) {
+                    console.warn('Failed to subscribe order push notification:', pushError)
+                }
+            }
+
             clearCart()
             onSuccess()
         } catch (err) {

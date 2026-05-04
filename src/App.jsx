@@ -24,6 +24,7 @@ import LandingPage from './pages/LandingPage'
 import RegisterTenantPage from './pages/RegisterTenantPage'
 import AuthCallbackPage from './pages/AuthCallbackPage'
 import DocsPage from './pages/DocsPage'
+import DemoPage from './pages/DemoPage'
 
 // Lazy load admin & POS pages for code splitting
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'))
@@ -167,6 +168,7 @@ export default function App() {
                         <Route path="/register" element={<RegisterTenantPage />} />
                         <Route path="/auth/callback" element={<AuthCallbackPage />} />
                         <Route path="/docs" element={<DocsPage />} />
+                        <Route path="/demo" element={<DemoPage />} />
 
                         {/* Super Admin Panel — global, no tenant context */}
                         <Route path="/superadmin" element={

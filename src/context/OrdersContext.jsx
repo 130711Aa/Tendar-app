@@ -177,6 +177,16 @@ export function OrdersProvider({ children }) {
                 .eq('id', orderId)
 
             if (error) throw error
+
+            if (newStatus === 'completed') {
+                const { error: notifyError } = await supabase.functions.invoke('send-order-notification', {
+                    body: { order_id: orderId }
+                })
+
+                if (notifyError) {
+                    console.warn('Failed to send order completion push notification:', notifyError)
+                }
+            }
         } catch (err) {
             console.error('Error updating order status:', err)
             fetchOrders()
