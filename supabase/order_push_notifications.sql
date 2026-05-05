@@ -32,6 +32,14 @@ CREATE POLICY "Customers can register order push subscriptions"
     FOR INSERT
     WITH CHECK (true);
 
+-- UPDATE diperlukan agar upsert dari frontend bisa update row yang sudah ada
+DROP POLICY IF EXISTS "Customers can update their own push subscriptions" ON public.order_push_subscriptions;
+CREATE POLICY "Customers can update their own push subscriptions"
+    ON public.order_push_subscriptions
+    FOR UPDATE
+    USING (true)
+    WITH CHECK (true);
+
 DROP POLICY IF EXISTS "Tenant admins can read order push subscriptions" ON public.order_push_subscriptions;
 CREATE POLICY "Tenant admins can read order push subscriptions"
     ON public.order_push_subscriptions
