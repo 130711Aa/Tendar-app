@@ -1,5 +1,6 @@
 {
   "rewrites": [
+    { "source": "/order-push-sw.js", "destination": "/order-push-sw.js" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
