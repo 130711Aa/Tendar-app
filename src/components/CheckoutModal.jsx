@@ -58,21 +58,42 @@ export default function CheckoutModal({ onClose, onSuccess }) {
                 duration: 5000,
                 style: { borderRadius: '12px', fontFamily: 'Plus Jakarta Sans', fontWeight: 600 },
             })
-            if (savedOrder && canUseOrderPushNotifications()) {
-                try {
-                    const result = await subscribeToOrderPushNotifications({
-                        order: savedOrder,
-                        tenantId,
-                        slug
+            // Push notification subscribe — verbose untuk debug
+            if (!savedOrder._offline) {
+                if (!canUseOrderPushNotifications()) {
+                    console.warn('[PushNotif] Tidak bisa subscribe: browser tidak support atau VAPID key tidak ada.')
+                    toast('Browser kamu tidak mendukung notifikasi push. Cek status pesanan secara manual ya.', {
+                        icon: 'ℹ️', duration: 5000
                     })
+                } else {
+                    try {
+                        const result = await subscribeToOrderPushNotifications({
+                            order: savedOrder,
+                            tenantId,
+                            slug
+                        })
 
-                    if (result.ok) {
-                        toast.success('Notifikasi pesanan aktif. Kami akan kabari saat pesanan selesai.', {
-                            duration: 4000
+                        if (result.ok) {
+                            toast.success('🔔 Notifikasi aktif! Kamu akan diberitahu saat pesanan selesai.', {
+                                duration: 5000
+                            })
+                        } else if (result.reason === 'denied') {
+                            toast('Notifikasi diblokir oleh browser. Izinkan notifikasi di settings browser untuk fitur ini.', {
+                                icon: '🔕', duration: 6000
+                            })
+                        } else if (result.reason === 'dismissed') {
+                            toast('Notifikasi tidak diaktifkan. Kamu bisa cek status pesanan di halaman "Pesanan Saya".', {
+                                icon: '🔕', duration: 5000
+                            })
+                        } else {
+                            console.warn('[PushNotif] Subscribe gagal dengan reason:', result.reason)
+                        }
+                    } catch (pushError) {
+                        console.error('[PushNotif] Error saat subscribe:', pushError)
+                        toast.error(`Gagal aktifkan notifikasi: ${pushError?.message || 'Unknown error'}`, {
+                            duration: 6000
                         })
                     }
-                } catch (pushError) {
-                    console.warn('Failed to subscribe order push notification:', pushError)
                 }
             }
 
