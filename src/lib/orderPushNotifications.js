@@ -60,25 +60,38 @@ export async function subscribeToOrderPushNotifications({ order, tenantId, slug 
         return { ok: false, reason: 'dismissed' }
     }
 
-    // Register service worker dan dapatkan subscription
+    // Register service worker dan tunggu ready
     const registration = await navigator.serviceWorker.register('/order-push-sw.js')
     await navigator.serviceWorker.ready
+    console.log('[PushNotif] Service worker ready')
 
-    // Selalu pastikan ada subscription aktif
-    let subscription = await registration.pushManager.getSubscription()
-    if (!subscription) {
+    // Paksa unsubscribe dari subscription lama (mencegah konflik VAPID key)
+    const existingSubscription = await registration.pushManager.getSubscription()
+    if (existingSubscription) {
+        console.log('[PushNotif] Unsubscribe dari subscription lama...')
+        await existingSubscription.unsubscribe()
+    }
+
+    // Buat subscription baru yang fresh
+    console.log('[PushNotif] Membuat subscription baru ke FCM...')
+    let subscription
+    try {
         subscription = await registration.pushManager.subscribe({
             userVisibleOnly: true,
             applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
         })
+        console.log('[PushNotif] Subscription FCM berhasil:', subscription.endpoint.substring(0, 60) + '...')
+    } catch (subscribeErr) {
+        console.error('[PushNotif] pushManager.subscribe() gagal:', subscribeErr)
+        throw new Error(`Push service error: ${subscribeErr.message}. Pastikan koneksi internet stabil dan coba lagi.`)
     }
 
     const subscriptionJson = subscription.toJSON()
 
-    // Upsert: jika kombinasi order_id+endpoint sudah ada, update saja
+    // Insert subscription — hanya butuh INSERT permission di RLS
     const { error } = await supabase
         .from('order_push_subscriptions')
-        .upsert({
+        .insert({
             tenant_id: tenantId,
             order_id: order.id,
             endpoint: subscription.endpoint,
@@ -86,13 +99,14 @@ export async function subscribeToOrderPushNotifications({ order, tenantId, slug 
             customer_name: order.customer_name || null,
             customer_phone: order.customer_phone || null,
             target_url: `${window.location.origin}/${slug}/orders`,
-            notified_completed_at: null,
-            last_error: null
-        }, {
-            onConflict: 'order_id,endpoint'
         })
 
     if (error) {
+        // Kode 23505 = unique violation, subscription sudah ada → anggap ok
+        if (error.code === '23505') {
+            console.log('[PushNotif] Subscription sudah terdaftar sebelumnya untuk order ini')
+            return { ok: true }
+        }
         console.error('[PushNotif] Gagal menyimpan subscription:', error)
         throw error
     }
