@@ -67,7 +67,6 @@ export function OrdersProvider({ children }) {
                 .eq('tenant_id', tenantId)
                 .gte('created_at', today.toISOString())
                 .order('created_at', { ascending: false })
-                .limit(50)
                 .abortSignal(controller.signal)
 
             clearTimeout(timeoutId)
