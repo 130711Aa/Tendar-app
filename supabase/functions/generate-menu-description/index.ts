@@ -39,25 +39,40 @@ Instruksi:
 
 Balas HANYA dengan teks deskripsinya saja, tanpa tanda kutip atau penjelasan tambahan.`;
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.8,
-            maxOutputTokens: 150,
-          },
-        }),
-      }
-    );
+    const MODELS = ["gemini-2.5-flash", "gemini-2.5-pro"];
+    let response: Response | null = null;
+    const errors: string[] = [];
 
-    if (!response.ok) {
+    for (const model of MODELS) {
+      console.log(`[generate-menu-description] Trying model: ${model}`);
+      response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              temperature: 0.8,
+              maxOutputTokens: 1024,
+              thinkingConfig: { thinkingBudget: 0 },
+            },
+          }),
+        }
+      );
+      if (response.ok) {
+        console.log(`[generate-menu-description] Success with model: ${model}`);
+        break;
+      }
       const errText = await response.text();
-      console.error("[generate-menu-description] Gemini error:", errText);
-      throw new Error(`Gemini API error: ${response.status}`);
+      console.error(`[generate-menu-description] Gemini error (${model}):`, errText);
+      errors.push(`${model}: ${response.status}`);
+      // Only retry on 503 (overloaded) or 404 (model not available for this key)
+      if (response.status !== 503 && response.status !== 404) break;
+    }
+
+    if (!response || !response.ok) {
+      throw new Error(`Semua model gagal: ${errors.join(" | ")}`);
     }
 
     const data = await response.json();
@@ -66,6 +81,7 @@ Balas HANYA dengan teks deskripsinya saja, tanpa tanda kutip atau penjelasan tam
     if (!description) {
       throw new Error("Respons kosong dari Gemini");
     }
+
 
     return new Response(
       JSON.stringify({ description }),

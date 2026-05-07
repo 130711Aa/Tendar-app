@@ -31,7 +31,14 @@ export default function AiInsightPanel({ tenantId }) {
             setStats(data.stats)
             setGenerated(true)
         } catch (err) {
-            setError(err.message || 'Gagal menghubungi Gemini AI')
+            const msg = err.message || ''
+            if (msg.includes('429') || msg.includes('quota') || msg.toLowerCase().includes('rate')) {
+                setError('Kuota Gemini AI sedang penuh. Coba lagi dalam beberapa menit ya! ☕')
+            } else if (msg.includes('500') || msg.includes('Internal')) {
+                setError('Server AI sedang sibuk. Silakan coba beberapa saat lagi.')
+            } else {
+                setError(msg || 'Gagal menghubungi Gemini AI')
+            }
         } finally {
             setLoading(false)
         }
@@ -137,12 +144,24 @@ export default function AiInsightPanel({ tenantId }) {
 
                         {/* Insight text */}
                         <div className="bg-gradient-to-br from-violet-50 to-purple-50 rounded-xl p-4 border border-violet-100">
-                            <div className="prose prose-sm max-w-none">
-                                {insight.split('\n').filter(line => line.trim()).map((line, i) => (
-                                    <p key={i} className="text-neutral-700 text-sm leading-relaxed mb-2 last:mb-0">
-                                        {line}
-                                    </p>
-                                ))}
+                            <div className="space-y-2">
+                                {insight.split('\n').filter(line => line.trim()).map((line, i) => {
+                                    // Convert **bold** and *italic* markers
+                                    const parts = line.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g)
+                                    return (
+                                        <p key={i} className="text-neutral-700 text-sm leading-relaxed">
+                                            {parts.map((part, j) => {
+                                                if (part.startsWith('**') && part.endsWith('**')) {
+                                                    return <strong key={j} className="font-bold text-neutral-800">{part.slice(2, -2)}</strong>
+                                                }
+                                                if (part.startsWith('*') && part.endsWith('*')) {
+                                                    return <em key={j}>{part.slice(1, -1)}</em>
+                                                }
+                                                return part
+                                            })}
+                                        </p>
+                                    )
+                                })}
                             </div>
                         </div>
 

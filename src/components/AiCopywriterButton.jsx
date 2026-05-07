@@ -35,7 +35,14 @@ export default function AiCopywriterButton({ productName, price, category, onApp
             if (data?.error) throw new Error(data.error)
             setResult(data.description)
         } catch (err) {
-            setError(err.message || 'Gagal menghubungi Gemini AI')
+            const msg = err.message || ''
+            if (msg.includes('429') || msg.includes('quota') || msg.toLowerCase().includes('rate')) {
+                setError('Kuota Gemini AI sedang penuh. Coba lagi dalam beberapa menit ya! ☕')
+            } else if (msg.includes('500') || msg.includes('Internal')) {
+                setError('Server AI sedang sibuk. Silakan coba beberapa saat lagi.')
+            } else {
+                setError(msg || 'Gagal menghubungi Gemini AI')
+            }
         } finally {
             setLoading(false)
         }

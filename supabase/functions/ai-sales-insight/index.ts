@@ -114,7 +114,7 @@ Deno.serve(async (req: Request) => {
     const cashCount = orders.filter(o => o.payment_method === "cash").length;
     const qrisCount = orders.filter(o => o.payment_method === "cashless").length;
 
-    const prompt = `Kamu adalah AI business consultant untuk UMKM F&B Indonesia. Analisis data penjualan berikut dan berikan insight yang actionable dalam Bahasa Indonesia:
+    const prompt = `Kamu adalah AI business consultant untuk UMKM F&B Indonesia. Analisis data penjualan berikut dan berikan insight yang actionable dan LENGKAP dalam Bahasa Indonesia.
 
 DATA PENJUALAN 30 HARI TERAKHIR:
 - Total Pesanan Selesai: ${orders.length}
@@ -126,35 +126,54 @@ DATA PENJUALAN 30 HARI TERAKHIR:
 - Metode Bayar: Cash ${cashCount} pesanan, QRIS ${qrisCount} pesanan
 
 INSTRUKSI:
-- Berikan 3 insight bisnis yang paling actionable dan spesifik
-- Setiap insight dimulai dengan emoji yang relevan
-- Format: paragraf singkat per insight, gunakan bullet point
-- Gunakan angka spesifik dari data di atas
-- Berikan saran konkret yang bisa langsung diimplementasikan
-- Tone: seperti konsultan berpengalaman, ramah tapi profesional
-- Maksimal 200 kata total
+Berikan TEPAT 3 insight bisnis. Untuk setiap insight:
+1. Mulai dengan emoji yang relevan dan judul bold (contoh: **📈 Judul Insight**)
+2. Tulis 2-3 kalimat analisis berdasarkan data di atas
+3. Berikan 1 rekomendasi konkret yang bisa langsung diimplementasikan
+4. Pisahkan setiap insight dengan baris kosong
 
-Balas langsung dengan insight-nya, tanpa pembukaan atau penutup formal.`;
+Gunakan angka spesifik dari data. Tone: konsultan berpengalaman, ramah dan profesional. Tulis dalam Bahasa Indonesia yang natural.
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 400,
-          },
-        }),
-      }
-    );
+MULAI LANGSUNG dengan insight pertama, JANGAN ada kalimat pembuka seperti "Berikut adalah" atau penutup seperti "Semoga membantu".`;
 
-    if (!response.ok) {
+    const MODELS = [
+      "gemini-2.5-flash",
+      "gemini-2.5-pro",
+    ];
+
+    let response: Response | null = null;
+    let lastError = "";
+
+    for (const model of MODELS) {
+      response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 4096,
+              thinkingConfig: { thinkingBudget: 0 },
+            },
+          }),
+        }
+      );
+
+      if (response.ok) break;
+
       const errText = await response.text();
-      console.error("[ai-sales-insight] Gemini error:", errText);
-      throw new Error(`Gemini API error: ${response.status}`);
+      console.error(`[ai-sales-insight] Gemini error (${model}):`, errText);
+      lastError = errText;
+
+      // Only retry on 503 (overloaded) or 404 (model not available)
+      const errCode = response.status;
+      if (errCode !== 503 && errCode !== 404) break;
+    }
+
+    if (!response || !response.ok) {
+      throw new Error(`Gemini API error: ${response?.status ?? "unknown"} - ${lastError.slice(0, 200)}`);
     }
 
     const data = await response.json();
