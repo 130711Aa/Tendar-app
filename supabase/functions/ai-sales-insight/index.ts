@@ -23,10 +23,31 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: "Missing Authorization header" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    
+    if (!supabaseUrl || !supabaseAnonKey) {
+       return new Response(
+        JSON.stringify({ error: "SUPABASE_URL atau SUPABASE_ANON_KEY tidak dikonfigurasi" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-      { auth: { persistSession: false } }
+      supabaseUrl,
+      supabaseAnonKey,
+      { 
+        auth: { persistSession: false },
+        global: { headers: { Authorization: authHeader } }
+      }
     );
 
     // Fetch orders from last 30 days
