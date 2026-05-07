@@ -5,6 +5,7 @@ import { formatRupiah } from '../lib/utils'
 import toast from 'react-hot-toast'
 import { useTenantContext } from '../context/TenantContext'
 import { uploadProductImage, deleteProductImage, compressImage } from '../lib/imageUtils'
+import AiCopywriterButton from '../components/AiCopywriterButton'
 
 export default function MenuManagement() {
     const { products, toggleStock, deleteProduct, updateProduct, addProduct } = useProducts()
@@ -396,8 +397,16 @@ export default function MenuManagement() {
                                 <input type="text" required value={addForm.name} onChange={e => setAddForm(f => ({ ...f, name: e.target.value }))} className="w-full px-4 py-3 bg-[#fcfaf8] border border-[#ff8c00]/10 rounded-xl text-sm focus:ring-2 focus:ring-[#ff8c00]/30 outline-none" placeholder="Nama minuman" />
                             </div>
                             <div>
-                                <label className="block text-sm font-bold text-neutral-600 mb-1.5">Deskripsi</label>
-                                <input type="text" value={addForm.description} onChange={e => setAddForm(f => ({ ...f, description: e.target.value }))} className="w-full px-4 py-3 bg-[#fcfaf8] border border-[#ff8c00]/10 rounded-xl text-sm focus:ring-2 focus:ring-[#ff8c00]/30 outline-none" placeholder="Bahan-bahan utama" />
+                                <div className="flex items-center justify-between mb-1.5">
+                                    <label className="block text-sm font-bold text-neutral-600">Deskripsi</label>
+                                    <AiCopywriterButton
+                                        productName={addForm.name}
+                                        price={addForm.price}
+                                        category={addForm.category}
+                                        onApply={(desc) => setAddForm(f => ({ ...f, description: desc }))}
+                                    />
+                                </div>
+                                <input type="text" value={addForm.description} onChange={e => setAddForm(f => ({ ...f, description: e.target.value }))} className="w-full px-4 py-3 bg-[#fcfaf8] border border-[#ff8c00]/10 rounded-xl text-sm focus:ring-2 focus:ring-[#ff8c00]/30 outline-none" placeholder="Klik ✨ Tulis dengan AI atau isi manual" />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
@@ -505,12 +514,21 @@ export default function MenuManagement() {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-bold text-neutral-600 mb-1.5">Deskripsi</label>
+                                <div className="flex items-center justify-between mb-1.5">
+                                    <label className="block text-sm font-bold text-neutral-600">Deskripsi</label>
+                                    <AiCopywriterButton
+                                        productName={editForm.name}
+                                        price={editForm.price}
+                                        category={editForm.category}
+                                        onApply={(desc) => setEditForm(f => ({ ...f, description: desc }))}
+                                    />
+                                </div>
                                 <input
                                     type="text"
                                     value={editForm.description}
                                     onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))}
                                     className="w-full px-4 py-3 bg-[#fcfaf8] border border-[#ff8c00]/10 rounded-xl text-sm focus:ring-2 focus:ring-[#ff8c00]/30 outline-none"
+                                    placeholder="Klik ✨ Tulis dengan AI atau isi manual"
                                 />
                             </div>
                             <div className="grid grid-cols-2 gap-4">

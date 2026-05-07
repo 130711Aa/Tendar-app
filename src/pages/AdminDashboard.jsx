@@ -6,9 +6,10 @@ import { useProducts } from '../context/ProductsContext'
 import { useStoreStatus } from '../context/StoreStatusContext'
 import { useTenantContext } from '../context/TenantContext'
 import { formatRupiah } from '../lib/utils'
+import AiInsightPanel from '../components/AiInsightPanel'
 
 export default function AdminDashboard() {
-    const { slug, tenantName } = useTenantContext()
+    const { slug, tenantName, tenantId } = useTenantContext()
     const { orders } = useOrders()
     const { categories } = useCategories()
     const { products } = useProducts()
@@ -339,6 +340,9 @@ export default function AdminDashboard() {
                         </div>
                     </div>
                 </div>
+
+                {/* AI Insight Panel */}
+                <AiInsightPanel tenantId={tenantId} />
 
                 {/* Recent Orders Table */}
                 <div className="bg-white rounded-xl border border-[#ff8c00]/10 shadow-sm overflow-hidden">

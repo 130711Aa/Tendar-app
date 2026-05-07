@@ -25,6 +25,7 @@ import RegisterTenantPage from './pages/RegisterTenantPage'
 import AuthCallbackPage from './pages/AuthCallbackPage'
 import DocsPage from './pages/DocsPage'
 import DemoPage from './pages/DemoPage'
+import NewFeatureBanner from './components/NewFeatureBanner'
 
 // Lazy load admin & POS pages for code splitting
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'))
@@ -133,6 +134,8 @@ function TenantAppContent() {
                 </Suspense>
             </div>
             {!isAdmin && !isPOS && <CartDrawer />}
+            {/* One-time AI feature announcement for admin users */}
+            {isAdmin && <NewFeatureBanner />}
         </div>
     )
 }
