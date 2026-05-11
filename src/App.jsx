@@ -40,6 +40,7 @@ const BillingPage = lazy(() => import('./pages/BillingPage'))
 const StaffManagement = lazy(() => import('./pages/StaffManagement'))
 const ShareLinkPage = lazy(() => import('./pages/ShareLinkPage'))
 const ReceiptDesignerPage = lazy(() => import('./pages/ReceiptDesignerPage'))
+const NeighborhoodIntelligencePage = lazy(() => import('./pages/NeighborhoodIntelligencePage'))
 
 // Super Admin pages (lazy loaded)
 const SuperAdminLayout = lazy(() => import('./pages/superadmin/SuperAdminLayout'))
@@ -123,6 +124,7 @@ function TenantAppContent() {
                         <Route path="admin/share" element={<ProtectedRoute><ShareLinkPage /></ProtectedRoute>} />
                         <Route path="admin/receipt" element={<ProtectedRoute><ReceiptDesignerPage /></ProtectedRoute>} />
                         <Route path="admin/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+                        <Route path="admin/neighborhood" element={<ProtectedRoute><NeighborhoodIntelligencePage /></ProtectedRoute>} />
                         <Route path="admin/login" element={<Navigate to={`/${slug}/auth`} replace />} />
 
                         {/* POS */}

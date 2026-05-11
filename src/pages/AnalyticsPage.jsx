@@ -163,14 +163,26 @@ const buildProductPerformance = (orders) => {
     const products = new Map()
 
     orders.forEach(order => {
-        getOrderItems(order).forEach(item => {
-            const name = item.name || item.product_name || 'Produk'
+        // Prioritize relational order_items (structured, reliable).
+        // Fall back to JSONB items column for old orders pre-dating the order_items table.
+        const items = getOrderItems(order)
+
+        items.forEach(item => {
+            const rawName = item.name || item.product_name || 'Produk'
+            // Use product_id as primary dedup key when available — immune to name casing/whitespace issues.
+            // Orders saved via old JSONB path use item.id; new relational path uses item.product_id.
+            // For items with no ID at all, fall back to normalized name string.
+            const productId = item.product_id || item.id
+            const key = productId
+                ? `id:${productId}`
+                : rawName.trim().toLowerCase().replace(/\s+/g, ' ')
+
             const quantity = Number(item.quantity) || 0
             const price = Number(item.price) || Number(item.unit_price) || 0
-            const current = products.get(name) || { name, total_quantity: 0, total_revenue: 0 }
+            const current = products.get(key) || { name: rawName.trim(), total_quantity: 0, total_revenue: 0 }
             current.total_quantity += quantity
             current.total_revenue += price * quantity
-            products.set(name, current)
+            products.set(key, current)
         })
     })
 

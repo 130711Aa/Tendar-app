@@ -176,6 +176,7 @@ function AdminNavbar() {
         navLinks.push({ to: `/${slug}/admin/staff`, label: 'Kelola Staff' })
         navLinks.push({ to: `/${slug}/admin/billing`, label: 'Langganan' })
     }
+    navLinks.push({ to: `/${slug}/admin/neighborhood`, label: 'Neighborhood Intelligence' })
 
     const avatarUrl = user?.user_metadata?.avatar_url || null
     const initial = (user?.user_metadata?.name || user?.email || 'A').charAt(0).toUpperCase()
@@ -254,7 +255,7 @@ function AdminNavbar() {
                             ? location.pathname === link.to
                             : location.pathname.startsWith(link.to)
 
-                        if (link.label === 'Kelola Staff' || link.label === 'Langganan' || link.label === 'Analytics' || link.label === 'Bagikan Toko' || link.label === 'Desain Struk') return null;
+                        if (link.label === 'Kelola Staff' || link.label === 'Langganan' || link.label === 'Analytics' || link.label === 'Bagikan Toko' || link.label === 'Desain Struk' || link.label === 'Neighborhood Intelligence') return null;
 
                         return (
                             <Link
@@ -289,7 +290,7 @@ function AdminNavbar() {
                     <div className="px-6 pt-6 pb-2">
                         <p className="text-[10px] font-bold text-[#181510]/40 uppercase tracking-widest">Management</p>
                     </div>
-                            {navLinks.filter(l => l.label === 'Kelola Staff' || l.label === 'Langganan' || l.label === 'Analytics' || l.label === 'Bagikan Toko' || l.label === 'Desain Struk').map(link => {
+                    {navLinks.filter(l => l.label === 'Kelola Staff' || l.label === 'Langganan' || l.label === 'Analytics' || l.label === 'Bagikan Toko' || l.label === 'Desain Struk' || l.label === 'Neighborhood Intelligence').map(link => {
                         const isActive = link.exact
                             ? location.pathname === link.to
                             : location.pathname.startsWith(link.to)
@@ -309,7 +310,8 @@ function AdminNavbar() {
                                         {link.label === 'Kelola Staff' ? 'badge' : 
                                          link.label === 'Analytics' ? 'analytics' : 
                                          link.label === 'Bagikan Toko' ? 'qr_code_2' :
-                                         link.label === 'Desain Struk' ? 'print' : 'card_membership'}
+                                         link.label === 'Desain Struk' ? 'print' : 
+                                         link.label === 'Neighborhood Intelligence' ? 'travel_explore' : 'card_membership'}
                                     </span>
                                     <span className="text-[13px]">{link.label}</span>
                                 </div>
@@ -454,7 +456,7 @@ function AdminNavbar() {
                                     ? location.pathname === link.to
                                     : location.pathname.startsWith(link.to)
 
-                                if (link.label === 'Kelola Staff' || link.label === 'Langganan' || link.label === 'Analytics' || link.label === 'Bagikan Toko' || link.label === 'Desain Struk') return null;
+                                if (link.label === 'Kelola Staff' || link.label === 'Langganan' || link.label === 'Analytics' || link.label === 'Bagikan Toko' || link.label === 'Desain Struk' || link.label === 'Neighborhood Intelligence') return null;
 
                                 return (
                                     <Link
@@ -490,7 +492,7 @@ function AdminNavbar() {
                             <div className="px-6 pt-6 pb-2">
                                 <p className="text-[10px] font-bold text-[#181510]/40 uppercase tracking-widest">Management</p>
                             </div>
-                                    {navLinks.filter(l => l.label === 'Kelola Staff' || l.label === 'Langganan' || l.label === 'Analytics' || l.label === 'Bagikan Toko' || l.label === 'Desain Struk').map(link => {
+                                    {navLinks.filter(l => l.label === 'Kelola Staff' || l.label === 'Langganan' || l.label === 'Analytics' || l.label === 'Bagikan Toko' || l.label === 'Desain Struk' || l.label === 'Neighborhood Intelligence').map(link => {
                                 const isActive = link.exact
                                     ? location.pathname === link.to
                                     : location.pathname.startsWith(link.to)
@@ -508,10 +510,11 @@ function AdminNavbar() {
                                     >
                                         <div className="flex items-center gap-3">
                                             <span className="material-symbols-outlined text-xl">
-                                            {link.label === 'Kelola Staff' ? 'badge' : 
-                                             link.label === 'Analytics' ? 'analytics' : 
-                                             link.label === 'Bagikan Toko' ? 'qr_code_2' :
-                                             link.label === 'Desain Struk' ? 'print' : 'card_membership'}
+                                             {link.label === 'Kelola Staff' ? 'badge' : 
+                                              link.label === 'Analytics' ? 'analytics' : 
+                                              link.label === 'Bagikan Toko' ? 'qr_code_2' :
+                                              link.label === 'Desain Struk' ? 'print' : 
+                                              link.label === 'Neighborhood Intelligence' ? 'travel_explore' : 'card_membership'}
                                             </span>
                                             <span className="text-[13px]">{link.label}</span>
                                         </div>

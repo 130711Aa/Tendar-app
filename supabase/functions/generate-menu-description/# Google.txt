@@ -1,0 +1,14 @@
+# Google
+
+[Gmail](https://mail.google.com/mail/&ogbl)
+[Images](https://www.google.com/imghp?hl=en&ogbl)
+[Sign in](https://accounts.google.com/ServiceLogin?hl=en&passive=true&continue=https://www.google.com/&ec=GAZAmgQ)
+[Advanced search](https://goo.gle/advanced_search?hl=en-SG&authuser=0)
+[简体中文](https://www.google.com/setprefs?sig=0_wVIsrqTK9do52kwT9oGUNoHNKr8%3D&hl=zh-CN&source=homepage&sa=X&ved=0ahUKEwihwZjK2KaUAxUb1TgGHeIYEvwQ2ZgBCAU)
+[Bahasa Melayu](https://www.google.com/setprefs?sig=0_wVIsrqTK9do52kwT9oGUNoHNKr8%3D&hl=ms&source=homepage&sa=X&ved=0ahUKEwihwZjK2KaUAxUb1TgGHeIYEvwQ2ZgBCAY)
+[தமிழ்](https://www.google.com/setprefs?sig=0_wVIsrqTK9do52kwT9oGUNoHNKr8%3D&hl=ta&source=homepage&sa=X&ved=0ahUKEwihwZjK2KaUAxUb1TgGHeIYEvwQ2ZgBCAc)
+[Advertising](https://goo.gle/intl/en/ads/)
+[Business Solutions](http://www.google.com.sg/intl/en/services/)
+[About Google](https://goo.gle/intl/en/about.html)
+[Google.com.sg](https://www.google.com/setprefdomain?prefdom=SG&prev=https://www.google.com.sg/&sig=K_bd-6P3KeVunecyt2q65jggG5xkM%3D)
+© 2026 - [Privacy](https://goo.gle/intl/en/policies/privacy/) - [Terms](https://goo.gle/intl/en/policies/terms/)
