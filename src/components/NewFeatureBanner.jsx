@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 
-const BANNER_KEY = 'tendar_ai_feature_banner_v1'
+const BANNER_KEY = 'tendar_ai_feature_banner_v2'
 
 /**
  * One-time banner that announces the new AI features to existing users.
@@ -45,9 +45,10 @@ export default function NewFeatureBanner() {
                                 Powered by Gemini
                             </span>
                         </div>
-                        <p className="text-xs text-white/80 leading-relaxed">
-                            🧠 <strong>AI Sales Insight</strong> di Dashboard — analisis penjualanmu dengan AI.<br />
-                            ✍️ <strong>AI Menu Copywriter</strong> di Kelola Menu — tulis deskripsi menu otomatis.
+                        <p className="text-xs text-white/80 leading-relaxed space-y-1">
+                            <span className="block">🧠 <strong>AI Sales Insight</strong> di Dashboard — analisis penjualan otomatis.</span>
+                            <span className="block">✍️ <strong>AI Menu Copywriter</strong> di Kelola Menu — bikin deskripsi menu.</span>
+                            <span className="block">📍 <strong>Neighborhood Intelligence</strong> — intip tren & prediksi pasar di sekitarmu.</span>
                         </p>
                     </div>
 
