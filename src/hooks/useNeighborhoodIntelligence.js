@@ -121,7 +121,7 @@ export function useNeighborhoodIntelligence(tenantId, businessName, merchantCate
     }, [invoke, radiusKm])
 
     // ── Generate competitive analysis ─────────────────────────────────────────
-    const generateCompetitiveInsight = useCallback(async (coords) => {
+    const generateCompetitiveInsight = useCallback(async (coords, { forceRefresh = false } = {}) => {
         setCompetitiveLoading(true)
         setCompetitiveError('')
         setCompetitiveInsight('')
@@ -131,6 +131,7 @@ export function useNeighborhoodIntelligence(tenantId, businessName, merchantCate
                 lon: coords.lon,
                 lat: coords.lat,
                 radius_km: radiusKm,
+                force_refresh: forceRefresh,
             })
             setCompetitiveInsight(data.insight)
             setCompetitiveMeta(data.metadata)
@@ -141,6 +142,34 @@ export function useNeighborhoodIntelligence(tenantId, businessName, merchantCate
             setCompetitiveLoading(false)
         }
     }, [invoke, radiusKm])
+
+    // ── Clear all insight state ────────────────────────────────────────────────
+    const clearInsights = useCallback(() => {
+        setCompetitiveInsight('')
+        setCompetitiveMeta(null)
+        setCompetitiveError('')
+        setCompetitiveCached(false)
+        setTimeMachineInsight('')
+        setTimeMachineMeta(null)
+        setTimeMachineError('')
+        setTimeMachineCached(false)
+    }, [])
+
+    // ── Delete DB cache + clear state ─────────────────────────────────────────
+    const resetAll = useCallback(async () => {
+        // Clear React state immediately
+        setCompetitiveInsight('')
+        setCompetitiveMeta(null)
+        setCompetitiveError('')
+        setCompetitiveCached(false)
+        setTimeMachineInsight('')
+        setTimeMachineMeta(null)
+        setTimeMachineError('')
+        setTimeMachineCached(false)
+        setMyLocation(null)
+        // Also wipe DB cache so next analysis is always fresh
+        try { await invoke({ action: 'delete_cache' }) } catch (_) { /* silent */ }
+    }, [invoke])
 
     // ── Generate Time Machine ─────────────────────────────────────────────────
     const generateTimeMachine = useCallback(async (coords) => {
@@ -183,5 +212,9 @@ export function useNeighborhoodIntelligence(tenantId, businessName, merchantCate
         // Time Machine
         timeMachineInsight, timeMachineMeta, timeMachineLoading, timeMachineError, timeMachineCached,
         generateTimeMachine,
+
+        // Utils
+        clearInsights,
+        resetAll,
     }
 }

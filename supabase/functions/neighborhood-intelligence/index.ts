@@ -78,7 +78,7 @@ Deno.serve(async (req: Request) => {
     });
 
     const body = await req.json();
-    const { action, tenant_id, lon, lat, radius_km = 5, business_name, category } = body;
+    const { action, tenant_id, lon, lat, radius_km = 5, business_name, category, force_refresh = false } = body;
 
     if (!tenant_id) return json({ error: "tenant_id wajib diisi" }, 400);
 
@@ -136,24 +136,41 @@ Deno.serve(async (req: Request) => {
       return json({ nearby, total: nearby.length });
     }
 
+    // ── ACTION: delete_cache ──────────────────────────────────────────────────
+    if (action === "delete_cache") {
+      await supabase
+        .from("neighborhood_insights")
+        .delete()
+        .eq("merchant_id", tenant_id);
+      return json({ success: true });
+    }
+
     // ── ACTION: competitive_analysis ──────────────────────────────────────────
     if (action === "competitive_analysis") {
       if (!lon || !lat) return json({ error: "lon & lat wajib diisi" }, 400);
 
-      // Check cache (max 24h old)
+      // Check cache (max 24h old) — cache is invalidated if category changed
       const cacheFrom = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-      const { data: cached } = await supabase
-        .from("neighborhood_insights")
-        .select("content, generated_at, metadata")
-        .eq("merchant_id", tenant_id)
-        .eq("insight_type", "competitive")
-        .gte("generated_at", cacheFrom)
-        .order("generated_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      let cachedResult = null;
+      if (!force_refresh) {
+        const { data: cached } = await supabase
+          .from("neighborhood_insights")
+          .select("content, generated_at, metadata")
+          .eq("merchant_id", tenant_id)
+          .eq("insight_type", "competitive")
+          .gte("generated_at", cacheFrom)
+          .order("generated_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
 
-      if (cached) {
-        return json({ insight: cached.content, metadata: cached.metadata, cached: true });
+        // Invalidate cache if merchant category has changed
+        if (cached && cached.metadata?.merchant_category === (category || null)) {
+          cachedResult = cached;
+        }
+      }
+
+      if (cachedResult) {
+        return json({ insight: cachedResult.content, metadata: cachedResult.metadata, cached: true });
       }
 
       // Fetch nearby merchants
@@ -194,6 +211,7 @@ Gunakan bahasa Indonesia yang santai dan akrab, seperti teman bicara. Maksimal 1
         radius_km,
         nearby_count: nearby.length,
         category_distribution: catMap,
+        merchant_category: category || null,
         lon,
         lat,
       };

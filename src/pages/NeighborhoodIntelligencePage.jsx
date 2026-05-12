@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useTenantContext } from '../context/TenantContext'
 import { useNeighborhoodIntelligence } from '../hooks/useNeighborhoodIntelligence'
 import InsightCard from '../components/neighborhood/InsightCard'
@@ -18,6 +18,15 @@ export default function NeighborhoodIntelligencePage() {
     const [activeTab, setActiveTab] = useState('map') // 'map' | 'competitive' | 'timemachine'
 
     const ni = useNeighborhoodIntelligence(tenantId, tenantName, merchantCategory)
+    const prevCategory = useRef(merchantCategory)
+
+    // Clear analisis saat kategori berubah
+    useEffect(() => {
+        if (prevCategory.current !== merchantCategory) {
+            prevCategory.current = merchantCategory
+            ni.clearInsights()
+        }
+    }, [merchantCategory]) // eslint-disable-line
 
     // On mount — try to load saved location
     useEffect(() => {
@@ -83,7 +92,7 @@ export default function NeighborhoodIntelligencePage() {
                             <div className="flex items-center gap-3 mb-4">
                                 <span className="text-4xl">🏘️</span>
                                 <div>
-                                    <h1 className="text-2xl font-black tracking-tight">Neighborhood Intelligence</h1>
+                                    <h1 className="text-2xl font-black tracking-tight">Tendar Sixth Sense</h1>
                                     <p className="text-white/60 text-sm">Powered by Google Gemini AI</p>
                                 </div>
                             </div>
@@ -167,7 +176,7 @@ export default function NeighborhoodIntelligencePage() {
                     <div>
                         <div className="flex items-center gap-2 mb-1">
                             <span className="text-2xl">🏘️</span>
-                            <h2 className="text-2xl font-black tracking-tight text-neutral-800">Neighborhood Intelligence</h2>
+                            <h2 className="text-2xl font-black tracking-tight text-neutral-800">Tendar Sixth Sense</h2>
                         </div>
                         <p className="text-neutral-500 text-sm">
                             {ni.myLocation?.address_label || 'Lokasi aktif'}
@@ -246,7 +255,7 @@ export default function NeighborhoodIntelligencePage() {
 
                         {/* CTA to analysis */}
                         <button
-                            onClick={() => { setActiveTab('competitive'); if (coords) ni.generateCompetitiveInsight(coords) }}
+                            onClick={() => { setActiveTab('competitive'); if (coords) ni.generateCompetitiveInsight(coords, { forceRefresh: true }) }}
                             className="w-full py-4 bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-violet-200 hover:from-violet-700 hover:to-indigo-700 transition-all active:scale-95 flex items-center justify-center gap-2"
                         >
                             <span className="text-lg">🎯</span>
@@ -270,7 +279,7 @@ export default function NeighborhoodIntelligencePage() {
                                     </p>
                                 </div>
                                 <button
-                                    onClick={() => coords && ni.generateCompetitiveInsight(coords)}
+                                    onClick={() => coords && ni.generateCompetitiveInsight(coords, { forceRefresh: true })}
                                     disabled={!coords}
                                     className="px-8 py-3 bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-violet-200 hover:from-violet-700 hover:to-indigo-700 transition-all active:scale-95"
                                 >
@@ -283,7 +292,7 @@ export default function NeighborhoodIntelligencePage() {
                             loading={ni.competitiveLoading}
                             error={ni.competitiveError}
                             cached={ni.competitiveCached}
-                            onRetry={() => coords && ni.generateCompetitiveInsight(coords)}
+                            onRetry={() => coords && ni.generateCompetitiveInsight(coords, { forceRefresh: true })}
                             gradient="from-violet-600 via-purple-600 to-indigo-600"
                             icon="🎯"
                             title="Analisis Kompetitor & Peluang"
@@ -372,10 +381,10 @@ export default function NeighborhoodIntelligencePage() {
                 {/* Reset location link */}
                 <div className="pt-2 border-t border-neutral-100">
                     <button
-                        onClick={() => { ni.setMyLocation(null); setSetupDone(false) }}
+                        onClick={() => { ni.resetAll(); setSetupDone(false) }}
                         className="text-xs text-neutral-400 hover:text-red-400 transition-colors"
                     >
-                        🔄 Reset & perbarui lokasi
+                        🔄 Reset &amp; perbarui lokasi
                     </button>
                 </div>
             </div>

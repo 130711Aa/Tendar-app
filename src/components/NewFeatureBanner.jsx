@@ -48,7 +48,7 @@ export default function NewFeatureBanner() {
                         <p className="text-xs text-white/80 leading-relaxed space-y-1">
                             <span className="block">🧠 <strong>AI Sales Insight</strong> di Dashboard — analisis penjualan otomatis.</span>
                             <span className="block">✍️ <strong>AI Menu Copywriter</strong> di Kelola Menu — bikin deskripsi menu.</span>
-                            <span className="block">📍 <strong>Neighborhood Intelligence</strong> — intip tren & prediksi pasar di sekitarmu.</span>
+                            <span className="block">📍 <strong>Tendar Sixth Sense</strong> — intip tren & prediksi pasar di sekitarmu.</span>
                         </p>
                     </div>
 
