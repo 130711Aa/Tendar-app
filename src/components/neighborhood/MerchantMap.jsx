@@ -43,7 +43,9 @@ const mapOptions = { disableDefaultUI: true, zoomControl: true }
 
 // ── Overpass API fetch with sessionStorage caching (exported for page-level use)
 export async function fetchRealFnBNearby(lat, lng, radiusMeters) {
-    const cacheKey = `osm_${lat.toFixed(4)}_${lng.toFixed(4)}_${radiusMeters}`
+    const numLat = parseFloat(lat);
+    const numLng = parseFloat(lng);
+    const cacheKey = `osm_${numLat.toFixed(4)}_${numLng.toFixed(4)}_${radiusMeters}`
     const cached = sessionStorage.getItem(cacheKey)
     if (cached) {
         try {
@@ -55,20 +57,49 @@ export async function fetchRealFnBNearby(lat, lng, radiusMeters) {
     const query = `
 [out:json][timeout:25];
 (
-  node["amenity"~"restaurant|cafe|fast_food|food_court|bar|bakery|ice_cream"](around:${radiusMeters},${lat},${lng});
-  way["amenity"~"restaurant|cafe|fast_food|food_court|bar|bakery|ice_cream"](around:${radiusMeters},${lat},${lng});
+  node["amenity"~"restaurant|cafe|fast_food|food_court|bar|bakery|ice_cream"](around:${radiusMeters},${numLat},${numLng});
+  way["amenity"~"restaurant|cafe|fast_food|food_court|bar|bakery|ice_cream"](around:${radiusMeters},${numLat},${numLng});
 );
 out center tags;
 `.trim()
 
-    const res = await fetch('https://overpass-api.de/api/interpreter', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `data=${encodeURIComponent(query)}`,
-    })
-    if (!res.ok) throw new Error(`Overpass error ${res.status}`)
+    const endpoints = [
+        'https://overpass-api.de/api/interpreter',
+        'https://lz4.overpass-api.de/api/interpreter',
+        'https://overpass.kumi.systems/api/interpreter',
+        'https://corsproxy.io/?' + encodeURIComponent('https://overpass-api.de/api/interpreter')
+    ];
 
-    const json = await res.json()
+    let json = null;
+    let lastError = null;
+
+    for (const endpoint of endpoints) {
+        try {
+            const isCorsProxy = endpoint.includes('corsproxy.io');
+            // If using corsproxy, we might need to send it as a GET request or keep it as POST depending on the proxy's support. 
+            // corsproxy.io supports POST.
+            const res = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Accept': 'application/json'
+                },
+                body: `data=${encodeURIComponent(query)}`,
+            })
+            if (!res.ok) throw new Error(`Overpass error ${res.status} from ${endpoint}`)
+            json = await res.json()
+            if (json && !json.remark) {
+                break; // Success
+            }
+        } catch (e) {
+            lastError = e;
+        }
+    }
+
+    if (!json) {
+        throw lastError || new Error('Semua endpoint Overpass gagal');
+    }
+
     const data = (json.elements || [])
         .filter(el => el.tags?.amenity)
         .map(el => ({
@@ -166,7 +197,7 @@ export default function MerchantMap({
 }) {
     const { isLoaded } = useJsApiLoader({
         id: 'google-map-script',
-        googleMapsApiKey: 'AIzaSyBAc0xkl5phHxStCoefdp3d9C8uCXyQfVg',
+        googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyBAc0xkl5phHxStCoefdp3d9C8uCXyQfVg',
     })
 
     const [selectedTendar, setSelectedTendar] = useState(null)
