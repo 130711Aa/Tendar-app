@@ -52,9 +52,20 @@ export function useNeighborhoodIntelligence(tenantId, businessName, merchantCate
         try {
             const data = await invoke({ action: 'get_my_location' })
             if (data.location) {
-                // coordinates are returned as WKB text; parse lon/lat from metadata if stored
-                setMyLocation(data.location)
-                return data.location
+                let loc = data.location
+                // Extract lon/lat from GeoJSON or address_label
+                if (loc.coordinates && loc.coordinates.type === 'Point' && Array.isArray(loc.coordinates.coordinates)) {
+                    loc.lon = loc.coordinates.coordinates[0]
+                    loc.lat = loc.coordinates.coordinates[1]
+                } else if (loc.address_label) {
+                    const parts = loc.address_label.split(',')
+                    if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+                        loc.lat = parseFloat(parts[0])
+                        loc.lon = parseFloat(parts[1])
+                    }
+                }
+                setMyLocation(loc)
+                return loc
             }
         } catch (_) { /* Silently handled — location just not set */ }
         return null

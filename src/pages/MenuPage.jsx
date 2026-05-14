@@ -6,12 +6,13 @@ import { useCart } from '../context/CartContext'
 import { useStoreStatus } from '../context/StoreStatusContext'
 import { useTenantContext } from '../context/TenantContext'
 import { formatRupiah } from '../lib/utils'
+import TendarAIOrdering from '../components/TendarAIOrdering'
 
 export default function MenuPage() {
     const { tenantName } = useTenantContext()
     const { filterCategories, loading: catLoading } = useCategories()
     const { availableProducts, loading: prodLoading } = useProducts()
-    const { totalItems, totalPrice, setIsOpen } = useCart()
+    const { totalItems, totalPrice, isOpen, setIsOpen, addItem } = useCart()
     const { isStoreOpen } = useStoreStatus()
     const [selectedCategory, setSelectedCategory] = useState('Semua')
     const [searchQuery, setSearchQuery] = useState('')
@@ -185,6 +186,18 @@ export default function MenuPage() {
                         <span className="text-lg font-black">{formatRupiah(totalPrice)}</span>
                     </button>
                 </div>
+            )}
+
+            {/* AI Ordering Widget */}
+            {isStoreOpen && (
+                <TendarAIOrdering
+                    menuItems={availableProducts}
+                    onAddToCart={(item, qty) => {
+                        for (let i = 0; i < qty; i++) addItem(item)
+                    }}
+                    merchantName={tenantName || 'Warung'}
+                    cartIsOpen={isOpen}
+                />
             )}
         </main>
     )

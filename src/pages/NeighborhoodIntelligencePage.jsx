@@ -1,24 +1,43 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useTenantContext } from '../context/TenantContext'
 import { useNeighborhoodIntelligence } from '../hooks/useNeighborhoodIntelligence'
 import InsightCard from '../components/neighborhood/InsightCard'
-import MerchantMap from '../components/neighborhood/MerchantMap'
+import MerchantMap, { fetchRealFnBNearby, callGeminiInsight, OSM_TYPE_LABEL } from '../components/neighborhood/MerchantMap'
 
 const RADIUS_OPTIONS = [1, 3, 5, 10, 25, 50]
 
 const CATEGORY_OPTIONS = [
-    'Kopi & Minuman', 'Makanan Berat', 'Snack & Jajanan',
-    'Dessert & Es', 'Bakery', 'Lainnya',
+    { id: 'kopi', label: 'Kopi & Minuman', icon: '☕' },
+    { id: 'makanan_berat', label: 'Makanan Berat', icon: '🍲' },
+    { id: 'snack', label: 'Snack & Jajanan', icon: '🍘' },
+    { id: 'dessert', label: 'Dessert & Es', icon: '🍨' },
+    { id: 'bakery', label: 'Bakery', icon: '🍞' },
+    { id: 'lainnya', label: 'Lainnya', icon: '📚', isCustom: true },
 ]
 
 export default function NeighborhoodIntelligencePage() {
     const { tenantId, tenantName } = useTenantContext()
-    const [merchantCategory, setMerchantCategory] = useState('')
+    const [selectedCategory, setSelectedCategory] = useState(null)
+    const [customCategoryText, setCustomCategoryText] = useState('')
+    
+    // Effective category is either the selected label or the custom text
+    const merchantCategory = selectedCategory?.isCustom 
+        ? customCategoryText 
+        : selectedCategory?.label || ''
+
     const [setupDone, setSetupDone] = useState(false)
     const [activeTab, setActiveTab] = useState('map') // 'map' | 'competitive' | 'timemachine'
 
     const ni = useNeighborhoodIntelligence(tenantId, tenantName, merchantCategory)
     const prevCategory = useRef(merchantCategory)
+
+    // OSM state (lifted here so competitive tab can share the data)
+    const [osmData, setOsmData] = useState([])
+    const [osmLoading, setOsmLoading] = useState(false)
+    const [osmError, setOsmError] = useState('')
+    const [osmInsight, setOsmInsight] = useState('')
+    const [osmInsightLoading, setOsmInsightLoading] = useState(false)
+    const [osmInsightError, setOsmInsightError] = useState('')
 
     // Clear analisis saat kategori berubah
     useEffect(() => {
@@ -44,12 +63,26 @@ export default function NeighborhoodIntelligencePage() {
 
     function extractCoords(loc) {
         if (!loc) return null
-        // Edge function returns raw row; coordinates are stored as WKB but
-        // we saved lon/lat in address_label fallback — use metadata instead.
-        // The `get_my_location` action returns the DB row; lon/lat come from
-        // a second `get_nearby` call which already has them. So we store them
-        // in state after user grants GPS.
+        
+        // 1. Check direct properties
         if (loc.lon != null && loc.lat != null) return { lon: loc.lon, lat: loc.lat }
+        
+        // 2. Check Supabase PostgREST GeoJSON format
+        if (loc.coordinates && loc.coordinates.type === 'Point' && Array.isArray(loc.coordinates.coordinates)) {
+            return { 
+                lon: loc.coordinates.coordinates[0], 
+                lat: loc.coordinates.coordinates[1] 
+            }
+        }
+        
+        // 3. Fallback parsing from address_label if it's "lat, lon"
+        if (loc.address_label) {
+            const parts = loc.address_label.split(',')
+            if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+                return { lat: parseFloat(parts[0]), lon: parseFloat(parts[1]) }
+            }
+        }
+
         return null
     }
 
@@ -71,80 +104,150 @@ export default function NeighborhoodIntelligencePage() {
 
     const coords = ni.myLocation?.lon ? { lon: ni.myLocation.lon, lat: ni.myLocation.lat } : null
 
+    // Fetch OSM whenever coords or radius changes
+    useEffect(() => {
+        if (!coords?.lat) return
+        setOsmLoading(true)
+        setOsmError('')
+        setOsmInsight('')
+        const radiusMeters = Math.min(ni.radiusKm * 1000, 50000)
+        fetchRealFnBNearby(coords.lat, coords.lon, radiusMeters)
+            .then(data => setOsmData(data))
+            .catch(() => setOsmError('Gagal memuat data kompetitor. Cek koneksi.'))
+            .finally(() => setOsmLoading(false))
+    }, [coords?.lat, coords?.lon, ni.radiusKm]) // eslint-disable-line
+
+    async function handleOsmInsight() {
+        const apiKey = import.meta.env.VITE_GEMINI_API_KEY
+        if (!apiKey) { setOsmInsightError('VITE_GEMINI_API_KEY belum dikonfigurasi.'); return }
+        setOsmInsightLoading(true)
+        setOsmInsightError('')
+        try {
+            const text = await callGeminiInsight(apiKey, tenantName, merchantCategory, ni.radiusKm, osmData)
+            setOsmInsight(text)
+        } catch (err) {
+            setOsmInsightError(err.message || 'Gagal generate analisis.')
+        } finally {
+            setOsmInsightLoading(false)
+        }
+    }
+
     // ── SETUP SCREEN ──────────────────────────────────────────────────────────
     if (!setupDone && !ni.locationLoading) {
         return (
-            <main className="flex-1 flex flex-col min-w-0">
-                <div className="p-6 md:p-8 max-w-2xl mx-auto w-full space-y-6">
+            <main className="flex-1 flex flex-col min-w-0 bg-[#f8f9fa]">
+                <div className="p-6 md:p-8 max-w-4xl mx-auto w-full space-y-6">
                     {/* Hero */}
-                    <div className="bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-[#0f3460] rounded-2xl p-8 text-white relative overflow-hidden">
-                        <div className="absolute inset-0 opacity-10">
-                            {[...Array(20)].map((_, i) => (
-                                <div key={i} className="absolute rounded-full bg-white"
-                                    style={{
-                                        width: Math.random() * 4 + 1, height: Math.random() * 4 + 1,
-                                        top: `${Math.random() * 100}%`, left: `${Math.random() * 100}%`,
-                                        opacity: Math.random(),
-                                    }} />
-                            ))}
-                        </div>
-                        <div className="relative">
-                            <div className="flex items-center gap-3 mb-4">
-                                <span className="text-4xl">🏘️</span>
-                                <div>
-                                    <h1 className="text-2xl font-black tracking-tight">Tendar Sixth Sense</h1>
-                                    <p className="text-white/60 text-sm">Powered by Google Gemini AI</p>
+                    <div className="bg-[#111827] rounded-2xl p-8 text-white relative overflow-hidden shadow-lg border border-neutral-800"
+                        style={{ backgroundImage: 'radial-gradient(#ffffff15 1px, transparent 1px)', backgroundSize: '32px 32px' }}
+                    >
+                        <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
+                            <div className="flex-1">
+                                <div className="flex items-center gap-3 mb-2">
+                                    <div className="w-10 h-10 rounded-xl bg-neutral-800/80 border border-neutral-700 flex items-center justify-center text-xl shadow-inner">
+                                        🏪
+                                    </div>
+                                    <div>
+                                        <h1 className="text-2xl font-black tracking-tight text-white">Tendar Sixth Sense</h1>
+                                        <p className="text-[#ff8c00] font-semibold text-sm">Powered by Google Gemini AI</p>
+                                    </div>
+                                </div>
+                                <p className="text-neutral-300 text-sm leading-relaxed mt-4 max-w-lg">
+                                    Warung kamu kecil, tapi <strong className="text-white">intelligence-nya sekelas Fortune 500</strong>.
+                                    Ketahui siapa kompetitor di sekitarmu, temukan peluang pasar yang belum diisi, dan dapatkan prediksi bisnis harian berbasis AI.
+                                </p>
+                            </div>
+                            
+                            {/* Illustration Mockup */}
+                            <div className="hidden md:flex flex-col bg-[#1e293b]/80 border border-neutral-700 rounded-xl p-4 w-64 shadow-2xl backdrop-blur-sm">
+                                <div className="flex items-end gap-2 h-24 mb-4 relative">
+                                    <div className="absolute top-0 left-1/2 -translate-x-1/2 bg-neutral-800 border border-neutral-600 text-[10px] px-2 py-0.5 rounded text-neutral-300 font-mono">Trend</div>
+                                    <div className="w-full bg-[#3b82f6]/40 rounded-t-sm h-[30%]"></div>
+                                    <div className="w-full bg-[#3b82f6]/60 rounded-t-sm h-[60%]"></div>
+                                    <div className="w-full bg-[#ff8c00] rounded-t-sm h-[90%] shadow-[0_0_15px_rgba(255,140,0,0.5)]"></div>
+                                    <div className="w-full bg-[#3b82f6]/80 rounded-t-sm h-[70%]"></div>
+                                    <div className="w-full bg-[#3b82f6]/40 rounded-t-sm h-[20%]"></div>
+                                </div>
+                                <div className="flex items-center gap-2 text-xs font-mono text-neutral-400">
+                                    <span className="text-[#ff8c00] animate-pulse">🤖</span> AI Analyzing Market...
                                 </div>
                             </div>
-                            <p className="text-white/80 text-sm leading-relaxed">
-                                Warung kamu kecil, tapi <strong className="text-white">intelligence-nya sekelas Fortune 500</strong>.
-                                Ketahui siapa kompetitor di sekitarmu, temukan peluang pasar yang belum diisi, dan dapatkan prediksi bisnis harian berbasis AI.
-                            </p>
                         </div>
                     </div>
 
                     {/* Category selection */}
-                    <div className="bg-white rounded-2xl border border-neutral-100 shadow-sm p-6 space-y-4">
-                        <h3 className="font-bold text-neutral-800">1. Kategori Warungmu</h3>
-                        <div className="grid grid-cols-2 gap-2">
+                    <div className="bg-white rounded-2xl border border-neutral-100 shadow-sm p-8">
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 font-bold flex items-center justify-center text-sm">1</div>
+                            <h3 className="font-bold text-neutral-800 text-lg">Kategori Warungmu</h3>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                             {CATEGORY_OPTIONS.map(cat => (
                                 <button
-                                    key={cat}
-                                    onClick={() => setMerchantCategory(cat)}
-                                    className={`px-4 py-3 rounded-xl text-sm font-semibold text-left transition-all border ${
-                                        merchantCategory === cat
-                                            ? 'bg-[#ff8c00] text-white border-[#ff8c00] shadow-md shadow-[#ff8c00]/20'
+                                    key={cat.id}
+                                    onClick={() => setSelectedCategory(cat)}
+                                    className={`px-4 py-3 rounded-xl text-sm font-semibold flex items-center gap-3 transition-all border ${
+                                        selectedCategory?.id === cat.id
+                                            ? 'bg-white text-neutral-800 border-[#ff8c00] shadow-[0_0_0_1px_#ff8c00] shadow-[#ff8c00]/10'
                                             : 'bg-neutral-50 text-neutral-600 border-neutral-200 hover:border-[#ff8c00]/40'
                                     }`}
                                 >
-                                    {cat}
+                                    <span className="text-xl opacity-80">{cat.icon}</span>
+                                    {cat.label}
                                 </button>
                             ))}
                         </div>
+
+                        {/* Custom Category Input */}
+                        {selectedCategory?.isCustom && (
+                            <div className="mt-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                                <label className="block text-sm font-medium text-neutral-700 mb-1.5 ml-1">Ketik Kategori Bisnismu</label>
+                                <input
+                                    type="text"
+                                    value={customCategoryText}
+                                    onChange={(e) => setCustomCategoryText(e.target.value)}
+                                    placeholder="Contoh: Warteg, Seblak, Angkringan..."
+                                    className="w-full px-4 py-3 rounded-xl border border-neutral-200 bg-neutral-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ff8c00]/50 focus:border-[#ff8c00] transition-all"
+                                    autoFocus
+                                />
+                            </div>
+                        )}
                     </div>
 
                     {/* Location permission */}
-                    <div className="bg-white rounded-2xl border border-neutral-100 shadow-sm p-6 space-y-4">
-                        <h3 className="font-bold text-neutral-800">2. Aktifkan Lokasi</h3>
-                        <div className="bg-amber-50 rounded-xl p-4 border border-amber-100">
-                            <p className="text-sm text-amber-800 font-medium">🔒 Privacy-first</p>
-                            <p className="text-xs text-amber-700 mt-1">
-                                Hanya nama bisnis dan kategori yang ditampilkan ke merchant lain. Data pribadi pemilik tidak pernah dibagikan.
-                            </p>
+                    <div className="bg-white rounded-2xl border border-neutral-100 shadow-sm p-8 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMSIgY3k9IjEiIHI9IjEiIGZpbGw9IiNlN2U1ZTQiLz48L3N2Zz4=')]">
+                        <div className="bg-white/90 backdrop-blur-sm rounded-xl p-2 -m-2 space-y-6">
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 font-bold flex items-center justify-center text-sm">2</div>
+                                <h3 className="font-bold text-neutral-800 text-lg">Aktifkan Lokasi</h3>
+                            </div>
+                            
+                            <div className="bg-[#fff9e6] rounded-xl p-5 border border-[#ffe082]">
+                                <p className="text-sm text-[#b28200] font-bold flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-base">lock</span>
+                                    Privacy-first
+                                </p>
+                                <p className="text-sm text-[#997000] mt-1.5 ml-6">
+                                    Hanya nama bisnis dan kategori yang ditampilkan ke merchant lain. Data pribadi pemilik tidak pernah dibagikan.
+                                </p>
+                            </div>
+
+                            {ni.locationError && (
+                                <p className="text-sm text-red-500 bg-red-50 rounded-xl px-4 py-3 border border-red-100">
+                                    ⚠️ {ni.locationError}
+                                </p>
+                            )}
+
+                            <button
+                                onClick={handleGrantLocation}
+                                disabled={!merchantCategory || ni.locationLoading}
+                                className="w-full flex items-center justify-center gap-2 py-4 bg-[#e5b373] text-white font-bold rounded-xl shadow-sm hover:bg-[#d49f5c] transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed text-base"
+                            >
+                                <span className="material-symbols-outlined text-xl">location_on</span>
+                                {!merchantCategory ? 'Pilih kategori dulu' : 'Aktifkan Sixth Sense'}
+                            </button>
                         </div>
-                        {ni.locationError && (
-                            <p className="text-sm text-red-500 bg-red-50 rounded-xl px-4 py-3 border border-red-100">
-                                ⚠️ {ni.locationError}
-                            </p>
-                        )}
-                        <button
-                            onClick={handleGrantLocation}
-                            disabled={!merchantCategory || ni.locationLoading}
-                            className="w-full flex items-center justify-center gap-3 py-4 bg-gradient-to-r from-[#ff8c00] to-[#e67e00] text-white font-bold rounded-xl shadow-lg shadow-[#ff8c00]/25 hover:from-[#e67e00] hover:to-[#cc7000] transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            <span className="material-symbols-outlined">location_on</span>
-                            {!merchantCategory ? 'Pilih kategori dulu' : 'Izinkan Akses Lokasi'}
-                        </button>
                     </div>
                 </div>
             </main>
@@ -230,6 +333,9 @@ export default function NeighborhoodIntelligencePage() {
                             myLocation={coords}
                             nearby={ni.nearby}
                             radiusKm={ni.radiusKm}
+                            osmData={osmData}
+                            osmLoading={osmLoading}
+                            osmError={osmError}
                         />
 
                         {/* Stats row */}
@@ -252,62 +358,88 @@ export default function NeighborhoodIntelligencePage() {
                                 ))}
                             </div>
                         )}
-
-                        {/* CTA to analysis */}
-                        <button
-                            onClick={() => { setActiveTab('competitive'); if (coords) ni.generateCompetitiveInsight(coords, { forceRefresh: true }) }}
-                            className="w-full py-4 bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-violet-200 hover:from-violet-700 hover:to-indigo-700 transition-all active:scale-95 flex items-center justify-center gap-2"
-                        >
-                            <span className="text-lg">🎯</span>
-                            Analisis Pasar Area Ini dengan Gemini
-                        </button>
                     </div>
                 )}
 
                 {/* ── TAB: COMPETITIVE ANALYSIS ─────────────────────────────── */}
                 {activeTab === 'competitive' && (
                     <div className="space-y-4">
-                        {!ni.competitiveInsight && !ni.competitiveLoading && !ni.competitiveError && (
-                            <div className="bg-white rounded-2xl border border-neutral-100 shadow-sm p-8 text-center space-y-4">
-                                <div className="size-20 rounded-2xl bg-gradient-to-br from-violet-50 to-indigo-100 flex items-center justify-center mx-auto text-4xl">
-                                    🎯
-                                </div>
+                        {/* Header card with OSM stats + trigger button */}
+                        <div className="bg-white rounded-2xl border border-neutral-100 shadow-sm p-5">
+                            <div className="flex items-center justify-between flex-wrap gap-3">
                                 <div>
-                                    <p className="font-bold text-neutral-800">Analisis Kompetitor & Peluang Pasar</p>
-                                    <p className="text-sm text-neutral-400 mt-1 max-w-xs mx-auto">
-                                        Gemini AI menganalisis {ni.nearby.length} merchant di radius {ni.radiusKm}km dan menemukan peluang untukmu
+                                    <p className="font-bold text-neutral-800">🎯 Analisis Kompetitor Real</p>
+                                    <p className="text-sm text-neutral-400 mt-0.5">
+                                        {osmLoading
+                                            ? 'Memuat data dari OpenStreetMap...'
+                                            : `${osmData.length} kompetitor F&B ditemukan dalam radius ${ni.radiusKm}km`
+                                        }
                                     </p>
                                 </div>
                                 <button
-                                    onClick={() => coords && ni.generateCompetitiveInsight(coords, { forceRefresh: true })}
-                                    disabled={!coords}
-                                    className="px-8 py-3 bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-violet-200 hover:from-violet-700 hover:to-indigo-700 transition-all active:scale-95"
+                                    onClick={handleOsmInsight}
+                                    disabled={osmInsightLoading || osmData.length === 0 || osmLoading}
+                                    className="px-6 py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-violet-200 hover:from-violet-700 hover:to-indigo-700 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                                 >
-                                    ✨ Mulai Analisis
+                                    {osmInsightLoading ? '⏳ Menganalisis...' : osmInsight ? '🔄 Perbarui Analisis' : '✨ Mulai Analisis'}
                                 </button>
                             </div>
-                        )}
-                        <InsightCard
-                            insight={ni.competitiveInsight}
-                            loading={ni.competitiveLoading}
-                            error={ni.competitiveError}
-                            cached={ni.competitiveCached}
-                            onRetry={() => coords && ni.generateCompetitiveInsight(coords, { forceRefresh: true })}
-                            gradient="from-violet-600 via-purple-600 to-indigo-600"
-                            icon="🎯"
-                            title="Analisis Kompetitor & Peluang"
-                            subtitle={`${ni.nearby.length} merchant dalam radius ${ni.radiusKm}km • Powered by Gemini`}
-                        />
-                        {ni.competitiveMeta && (
-                            <div className="bg-white rounded-xl border border-neutral-100 p-4 space-y-2">
-                                <p className="text-xs font-bold text-neutral-500 uppercase tracking-wider">Detail Analisis</p>
-                                <div className="flex flex-wrap gap-2">
-                                    {Object.entries(ni.competitiveMeta.category_distribution || {}).map(([cat, count]) => (
-                                        <span key={cat} className="px-2 py-1 bg-neutral-100 text-neutral-600 rounded-lg text-xs font-medium">
-                                            {cat}: {count}
+
+                            {/* OSM type breakdown badges */}
+                            {osmData.length > 0 && !osmLoading && (
+                                <div className="mt-4 flex flex-wrap gap-2">
+                                    {Object.entries(
+                                        osmData.reduce((acc, c) => { acc[c.type] = (acc[c.type] || 0) + 1; return acc }, {})
+                                    ).map(([type, count]) => (
+                                        <span key={type} className="px-2.5 py-1 bg-neutral-100 text-neutral-600 rounded-lg text-xs font-medium">
+                                            {OSM_TYPE_LABEL[type] || type}: {count}
                                         </span>
                                     ))}
                                 </div>
+                            )}
+
+                            {osmLoading && (
+                                <div className="mt-4 flex items-center gap-2 text-sm text-neutral-400">
+                                    <div className="w-4 h-4 rounded-full border-2 border-neutral-200 border-t-violet-500 animate-spin flex-shrink-0" />
+                                    Fetching data kompetitor dari OpenStreetMap...
+                                </div>
+                            )}
+
+                            {osmError && (
+                                <p className="mt-3 text-sm text-red-500">⚠️ {osmError}</p>
+                            )}
+                        </div>
+
+                        {/* Gemini Insight loading skeleton */}
+                        {osmInsightLoading && (
+                            <div className="bg-white rounded-2xl border border-neutral-100 shadow-sm p-5 space-y-3">
+                                {[85, 95, 70, 60, 80].map((w, i) => (
+                                    <div key={i} className="h-3 rounded-full bg-neutral-100 animate-pulse" style={{ width: `${w}%` }} />
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Gemini Insight result */}
+                        {!osmInsightLoading && osmInsight && (
+                            <div className="bg-gradient-to-br from-violet-50 to-indigo-50 rounded-2xl border border-violet-100 p-5">
+                                <p className="text-xs font-bold text-violet-500 uppercase tracking-wider mb-3">Analisis Gemini AI • Data OpenStreetMap</p>
+                                <p className="text-sm leading-relaxed text-neutral-700 whitespace-pre-wrap">{osmInsight}</p>
+                            </div>
+                        )}
+
+                        {/* Error */}
+                        {osmInsightError && (
+                            <div className="bg-red-50 rounded-xl border border-red-100 p-4">
+                                <p className="text-sm text-red-600">⚠️ {osmInsightError}</p>
+                            </div>
+                        )}
+
+                        {/* Empty state — no OSM data */}
+                        {osmData.length === 0 && !osmLoading && !osmError && (
+                            <div className="bg-white rounded-2xl border border-neutral-100 shadow-sm p-8 text-center">
+                                <span className="text-4xl">🏝️</span>
+                                <p className="mt-3 font-semibold text-neutral-600">Tidak ada data kompetitor di area ini</p>
+                                <p className="text-sm text-neutral-400 mt-1">OpenStreetMap tidak menemukan F&B dalam radius {ni.radiusKm}km</p>
                             </div>
                         )}
                     </div>
